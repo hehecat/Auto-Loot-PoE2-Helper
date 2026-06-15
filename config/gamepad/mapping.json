@@ -1,0 +1,13 @@
+{
+  "name": "DualSense Wireless Controller",
+  "buttons": {
+    "pickup": 0,
+    "hp_flask": 13,
+    "mana_flask": 14,
+    "dodge": 3,
+    "skill_1": 2,
+    "skill_2": 1,
+    "skill_3": 10,
+    "skill_4": 9
+  }
+}
