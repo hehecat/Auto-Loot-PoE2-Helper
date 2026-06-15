@@ -1,6 +1,6 @@
-"""Эмуляция ввода для PoE2 через win32api.
+"""Эмуляция ввода для PoE2.
 
-Отправляет нажатия клавиш напрямую в окно игры.
+Использует pynput для реального нажатия клавиш.
 Работает с любым типом контроллера (DualSense, Xbox и т.д.)
 """
 import json
@@ -11,39 +11,43 @@ from pathlib import Path
 _log = logging.getLogger("autoloot.gamepad")
 
 try:
-    import win32api
-    import win32con
-    import win32gui
-    HAS_WIN32 = True
+    from pynput.keyboard import Controller, Key
+    HAS_PYNPUT = True
 except ImportError:
-    HAS_WIN32 = False
+    HAS_PYNPUT = False
 
 MAPPING_FILE = Path(__file__).resolve().parents[2] / "config" / "gamepad" / "mapping.json"
 
 # PoE2 keyboard shortcuts (works even in controller mode)
 POE2_KEYS = {
-    "pickup": 0x20,       # Space
-    "hp_flask": 0x31,     # 1
-    "mana_flask": 0x32,   # 2
-    "dodge": 0x1B,        # Escape
-    "skill_1": 0x51,      # Q
-    "skill_2": 0x57,      # W
-    "skill_3": 0x45,      # E
-    "skill_4": 0x52,      # R
+    "pickup": "space",
+    "hp_flask": "1",
+    "mana_flask": "2",
+    "dodge": "escape",
+    "skill_1": "q",
+    "skill_2": "w",
+    "skill_3": "e",
+    "skill_4": "r",
 }
 
 
 class GamepadEmulator:
-    """Отправка нажатий в окно PoE2 через win32api."""
+    """Отправка нажатий клавиш через pynput."""
 
     def __init__(self):
         self.enabled = False
         self._mapping = self._load_mapping()
-        self._hwnd = None
+        self._kb = None
 
-        if HAS_WIN32:
-            self.enabled = True
-            _log.info("Input emulator: win32api active")
+        if HAS_PYNPUT:
+            try:
+                self._kb = Controller()
+                self.enabled = True
+                _log.info("Input emulator: pynput active")
+            except Exception as e:
+                _log.warning("pynput init failed: %s", e)
+        else:
+            _log.info("pynput not available")
 
     def _load_mapping(self):
         if MAPPING_FILE.exists():
@@ -56,32 +60,21 @@ class GamepadEmulator:
                 pass
         return {}
 
-    def _find_game_window(self):
-        """Find PoE2 window handle."""
-        if self._hwnd and win32gui.IsWindow(self._hwnd):
-            return self._hwnd
-
-        def callback(hwnd, _):
-            if win32gui.IsWindowVisible(hwnd):
-                title = win32gui.GetWindowText(hwnd)
-                if "path of exile" in title.lower():
-                    self._hwnd = hwnd
-                    return False
-            return True
-
-        win32gui.EnumWindows(callback, None)
-        return self._hwnd
-
-    def _send_key(self, vk_code, duration=0.03):
-        """Send key press to game window."""
-        hwnd = self._find_game_window()
-        if not hwnd:
+    def _send_key(self, key_name, duration=0.03):
+        """Send key press via pynput."""
+        if not self._kb:
             return
 
         try:
-            win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+            key_map = {
+                "space": Key.space,
+                "escape": Key.esc,
+            }
+            key = key_map.get(key_name) or key_name
+
+            self._kb.press(key)
             time.sleep(duration)
-            win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
+            self._kb.release(key)
         except Exception as e:
             _log.debug("Key send error: %s", e)
 
@@ -90,9 +83,9 @@ class GamepadEmulator:
         if not self.enabled:
             return
 
-        vk = POE2_KEYS.get(action)
-        if vk is not None:
-            self._send_key(vk, duration)
+        key_name = POE2_KEYS.get(action)
+        if key_name:
+            self._send_key(key_name, duration)
 
     def pickup(self):
         self.press("pickup", duration=0.03)
