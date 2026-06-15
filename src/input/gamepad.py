@@ -1,10 +1,7 @@
-"""Эмуляция джойстика через виртуальный Xbox контроллер.
+"""Эмуляция ввода для PoE2 через win32api.
 
-Позволяет боту нажимать кнопки джойстика (X, L2 и т.д.)
-без реального джойстика.
-
-Требует: vgamepad (pip install vgamepad)
-Для PoE2: X=подбор, L2=HP фласка, R2=MP фласка
+Отправляет нажатия клавиш напрямую в окно игры.
+Работает с любым типом контроллера (DualSense, Xbox и т.д.)
 """
 import json
 import logging
@@ -14,95 +11,88 @@ from pathlib import Path
 _log = logging.getLogger("autoloot.gamepad")
 
 try:
-    import vgamepad as vg
-    HAS_VGAMEPAD = True
+    import win32api
+    import win32con
+    import win32gui
+    HAS_WIN32 = True
 except ImportError:
-    HAS_VGAMEPAD = False
+    HAS_WIN32 = False
 
 MAPPING_FILE = Path(__file__).resolve().parents[2] / "config" / "gamepad" / "mapping.json"
 
+# PoE2 keyboard shortcuts (works even in controller mode)
+POE2_KEYS = {
+    "pickup": 0x20,       # Space
+    "hp_flask": 0x31,     # 1
+    "mana_flask": 0x32,   # 2
+    "dodge": 0x1B,        # Escape
+    "skill_1": 0x51,      # Q
+    "skill_2": 0x57,      # W
+    "skill_3": 0x45,      # E
+    "skill_4": 0x52,      # R
+}
+
 
 class GamepadEmulator:
-    """Эмуляция Xbox контроллера для PoE2."""
+    """Отправка нажатий в окно PoE2 через win32api."""
 
     def __init__(self):
-        self._gamepad = None
         self.enabled = False
         self._mapping = self._load_mapping()
+        self._hwnd = None
 
-        if HAS_VGAMEPAD:
-            try:
-                self._gamepad = vg.VX360Gamepad()
-                self.enabled = True
-                _log.info("Virtual Xbox controller created")
-            except Exception as e:
-                _log.warning("Failed to create controller: %s", e)
-        else:
-            _log.info("vgamepad not installed (pip install vgamepad)")
+        if HAS_WIN32:
+            self.enabled = True
+            _log.info("Input emulator: win32api active")
 
     def _load_mapping(self):
         if MAPPING_FILE.exists():
             try:
                 with open(MAPPING_FILE, encoding="utf-8") as f:
                     data = json.load(f)
-                _log.info("Gamepad mapping loaded: %s", data.get("name", "unknown"))
+                _log.info("Mapping loaded: %s", data.get("name", "unknown"))
                 return data.get("buttons", {})
             except Exception:
                 pass
         return {}
 
-    def _get_xbox_button(self, action):
-        """Get Xbox button constant from action name using PS4-to-Xbox mapping."""
-        ps4_id = self._mapping.get(action)
-        if ps4_id is None:
-            return None
+    def _find_game_window(self):
+        """Find PoE2 window handle."""
+        if self._hwnd and win32gui.IsWindow(self._hwnd):
+            return self._hwnd
 
-        PS4_TO_XBOX = {
-            0: vg.XUSB_BUTTON.XUSB_GAMEPAD_A,              # PS4 X
-            1: vg.XUSB_BUTTON.XUSB_GAMEPAD_B,              # PS4 O
-            2: vg.XUSB_BUTTON.XUSB_GAMEPAD_X,              # PS4 Square
-            3: vg.XUSB_BUTTON.XUSB_GAMEPAD_Y,              # PS4 Triangle
-            4: vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER,  # PS4 L1
-            5: vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, # PS4 R1
-            8: vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK,           # PS4 Share
-            9: vg.XUSB_BUTTON.XUSB_GAMEPAD_START,          # PS4 Options
-            10: vg.XUSB_BUTTON.XUSB_GAMEPAD_GUIDE,         # PS4 PS
-            11: vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB,    # PS4 L3
-            12: vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB,   # PS4 R3
-            13: vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP,       # PS4 D-pad Up
-            14: vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN,     # PS4 D-pad Down
-            15: vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT,     # PS4 D-pad Left
-            16: vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT,    # PS4 D-pad Right
-        }
-        return PS4_TO_XBOX.get(ps4_id)
+        def callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                if "path of exile" in title.lower():
+                    self._hwnd = hwnd
+                    return False
+            return True
 
-    def press(self, action, duration=0.05):
-        """Нажать и отпустить кнопку по действию."""
-        if not self.enabled or not self._gamepad:
+        win32gui.EnumWindows(callback, None)
+        return self._hwnd
+
+    def _send_key(self, vk_code, duration=0.03):
+        """Send key press to game window."""
+        hwnd = self._find_game_window()
+        if not hwnd:
             return
 
         try:
-            xbox_btn = self._get_xbox_button(action)
-            if xbox_btn is not None:
-                self._gamepad.press_button(button=xbox_btn)
-                self._gamepad.update()
-                time.sleep(duration)
-                self._gamepad.release_button(button=xbox_btn)
-                self._gamepad.update()
-            elif action == "hp_flask":
-                self._gamepad.left_trigger(value=255)
-                self._gamepad.update()
-                time.sleep(duration)
-                self._gamepad.left_trigger(value=0)
-                self._gamepad.update()
-            elif action == "mana_flask":
-                self._gamepad.right_trigger(value=255)
-                self._gamepad.update()
-                time.sleep(duration)
-                self._gamepad.right_trigger(value=0)
-                self._gamepad.update()
+            win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+            time.sleep(duration)
+            win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
         except Exception as e:
-            _log.debug("Press error %s: %s", action, e)
+            _log.debug("Key send error: %s", e)
+
+    def press(self, action, duration=0.03):
+        """Press button by action name."""
+        if not self.enabled:
+            return
+
+        vk = POE2_KEYS.get(action)
+        if vk is not None:
+            self._send_key(vk, duration)
 
     def pickup(self):
         self.press("pickup", duration=0.03)
@@ -120,9 +110,4 @@ class GamepadEmulator:
         self.press(f"skill_{slot}", duration=0.03)
 
     def reset(self):
-        if self._gamepad:
-            try:
-                self._gamepad.reset()
-                self._gamepad.update()
-            except Exception:
-                pass
+        pass
