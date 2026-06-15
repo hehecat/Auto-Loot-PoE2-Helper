@@ -1,12 +1,10 @@
 """Прозрачный оверлей с кругом радиуса подбора поверх игры.
 
-Отображает круг радиуса и точку центра персонажа в реальном времени.
-Позволяет настраивать радиус перетаскиванием.
+Отображает круг радиуса, точку центра персонажа и все обнаруженные цели.
 """
 from __future__ import annotations
 
 import threading
-import time
 
 try:
     import tkinter as tk
@@ -17,7 +15,7 @@ except ImportError:
 
 
 class RadiusOverlay:
-    """Прозрачный оверлей с кругом радиуса."""
+    """Прозрачный оверлей с кругом радиуса и метками целей."""
 
     def __init__(self, stop_event, get_state_fn):
         self.stop_event = stop_event
@@ -42,7 +40,10 @@ class RadiusOverlay:
 
         screen_w = self._root.winfo_screenwidth()
         screen_h = self._root.winfo_screenheight()
-        size = 600
+        self._screen_w = screen_w
+        self._screen_h = screen_h
+        size = max(screen_w, screen_h)
+        self._size = size
         x = (screen_w - size) // 2
         y = (screen_h - size) // 2
         self._root.geometry(f"{size}x{size}+{x}+{y}")
@@ -97,36 +98,42 @@ class RadiusOverlay:
         active = state.get("active", False)
         targets = state.get("targets", 0)
         in_radius = state.get("in_radius", 0)
+        center_offset = state.get("center_offset", [0, 0])
+        frame_size = state.get("frame_size", [1920, 1080])
 
         self._canvas.delete("all")
 
-        cx, cy = self._cx, self._cy
-        r = self._radius
+        fw, fh = frame_size
+        scale = self._size / max(fw, fh)
+
+        char_cx = self._cx + int(center_offset[0] * scale)
+        char_cy = self._cy + int(center_offset[1] * scale)
+        r = int(self._radius * scale)
 
         color = "#00ff88" if active else "#ff4444"
 
         self._canvas.create_oval(
-            cx - r, cy - r, cx + r, cy + r,
+            char_cx - r, char_cy - r, char_cx + r, char_cy + r,
             outline=color, width=2, dash=(6, 4))
 
         self._canvas.create_oval(
-            cx - 5, cy - 5, cx + 5, cy + 5,
+            char_cx - 6, char_cy - 6, char_cx + 6, char_cy + 6,
             fill=color, outline="")
 
-        self._canvas.create_line(cx - 12, cy, cx + 12, cy, fill=color, width=1)
-        self._canvas.create_line(cx, cy - 12, cx, cy + 12, fill=color, width=1)
+        self._canvas.create_line(char_cx - 15, char_cy, char_cx + 15, char_cy, fill=color, width=1)
+        self._canvas.create_line(char_cx, char_cy - 15, char_cx, char_cy + 15, fill=color, width=1)
 
         f = tkfont.Font(family="Consolas", size=11, weight="bold")
         self._canvas.create_text(
-            cx, cy - r - 15,
+            char_cx, char_cy - r - 15,
             text=f"R={self._radius}px",
             fill=color, font=f)
         self._canvas.create_text(
-            cx, cy + r + 15,
+            char_cx, char_cy + r + 15,
             text=f"targets:{targets} in:{in_radius}",
             fill=color, font=f)
         self._canvas.create_text(
-            cx, cy + r + 30,
+            char_cx, char_cy + r + 30,
             text="drag=resize | scroll=adjust",
             fill="#888888", font=tkfont.Font(family="Consolas", size=9))
 
