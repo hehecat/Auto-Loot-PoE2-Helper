@@ -160,8 +160,8 @@ class BotRunner:
                 try:
                     from ..input.gamepad import GamepadEmulator
                     gamepad = GamepadEmulator()
-                    if gamepad.enabled:
-                        log.info("Gamepad: ACTIVE - mapping loaded")
+                    if gamepad.start():
+                        log.info("Gamepad: ACTIVE - virtual Xbox created, DualSense disabled")
                     else:
                         log.warning("Gamepad: FAILED to initialize")
                         gamepad = None
@@ -268,6 +268,9 @@ class BotRunner:
                 if cap._double_buffer:
                     cap.stop_buffer()
                 pickup_log.close()
+                if gamepad:
+                    gamepad.stop()
+                    log.info("Gamepad stopped, DualSense re-enabled")
         except Exception as e:
             log.error("Bot error: %s", e)
         finally:
