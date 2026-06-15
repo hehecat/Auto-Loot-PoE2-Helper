@@ -395,30 +395,38 @@ if HAS_PYQT5:
             layout.addLayout(btn_layout)
 
         def _add_spin(self, form, label, key, default, from_, to_, step=1):
+            lbl = QLabel(label)
+            lbl.setStyleSheet("color: #ffffff; font-weight: bold;")
             var = QSpinBox() if step == 1 else QDoubleSpinBox()
             var.setRange(from_, to_)
             var.setValue(default)
             if step != 1:
                 var.setSingleStep(step)
-            form.addRow(label, var)
+            form.addRow(lbl, var)
             self._values[key] = var
 
         def _add_check(self, form, label, key, default):
+            lbl = QLabel(label)
+            lbl.setStyleSheet("color: #ffffff; font-weight: bold;")
             var = QCheckBox()
             var.setChecked(default)
-            form.addRow(label, var)
+            form.addRow(lbl, var)
             self._values[key] = var
 
         def _add_entry(self, form, label, key, default):
+            lbl = QLabel(label)
+            lbl.setStyleSheet("color: #ffffff; font-weight: bold;")
             var = QLineEdit(default)
-            form.addRow(label, var)
+            form.addRow(lbl, var)
             self._values[key] = var
 
         def _add_combo(self, form, label, key, default, options):
+            lbl = QLabel(label)
+            lbl.setStyleSheet("color: #ffffff; font-weight: bold;")
             var = QComboBox()
             var.addItems(options)
             var.setCurrentText(default)
-            form.addRow(label, var)
+            form.addRow(lbl, var)
             self._values[key] = var
 
         def _load_values(self):
