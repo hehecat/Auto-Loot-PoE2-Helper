@@ -1,0 +1,81 @@
+# Auto Loot PoE Helper — базовый конфиг (можно переопределить профилем)
+
+game:
+  window_title: "Path of Exile 2"
+
+capture:
+  backend: dxcam        # dxcam | mss (dxcam быстрее; при сбое авто-фолбэк на mss)
+  target_fps: 30
+
+filter:
+  path: "C:/Users/OLD/Documents/My Games/Path of Exile 2/Vladislav Yoshi Perfection.filter"
+  marker_rgb: [255, 0, 200]    # fallback-цвет маркера (для категорий без своего цвета)
+  extra_colors: []              # доп. цвета для детекции (R, G, B)
+  category_colors:              # все категории — один безопасный розовый (нет в окружении PoE2)
+    currency:  [255, 0, 200]
+    fragments: [255, 0, 200]
+    waystones: [255, 0, 200]
+    gems:      [255, 0, 200]
+  categories:                   # какие категории авто-собирать
+    - currency
+    - fragments
+    - waystones
+    - gems
+
+vision:
+  min_blob_area: 120    # мин. площадь пятна маркера в пикселях (одна подпись большая)
+  hue_tolerance: 8      # допуск по тону вокруг marker_rgb (HSV, 0..179)
+  sat_min: 120          # мин. насыщенность
+  val_min: 120          # мин. яркость
+  close_px: 3           # лёгкая склейка (плотные подписи; большая склеивает соседние)
+
+loot:
+  pickup_radius_px: 250  # только близкий лут (большой радиус -> беготня к дальнему)
+  lazy_radius_px: 80     # радиус подбора вокруг КУРСОРА в режиме lazy
+  click_cooldown_ms: 300 # пауза между кликами (мало -> мельтешение, не успевает поднять)
+  dedup_ms: 2500         # 0 = прилипание к ближайшей цели; >0 = не кликать ту же точку N мс
+  randomize_delay_ms: [20, 70]
+  human_mouse: true         # плавное движение по кривой Безье (выглядит как рука человека)
+  mode: toggle          # hold | toggle | single | lazy (toggle: F8 вкл/выкл, ничего не держать)
+  category_priority:    # порядок подбора (меньше = важнее; сначала валюта, потом остальное)
+    currency: 1
+    fragments: 2
+    gems: 3
+    waystones: 4
+  center_offset_xy: [0, -40]  # центр персонажа относительно центра кадра
+
+hotkeys:
+  toggle: "f8"        # мастер вкл/выкл (toggle-режим подбора + авто-автоматика)
+  pickup: "space"
+  profile: "f7"       # циклическое переключение профилей на лету
+  calibrate: "f9"
+  quit: "f12"
+
+profiles:
+  start: null         # имя профиля при старте (без .yaml); null = default
+
+hp_flask:             # авто-фласка ХП при просадке жизней
+  enabled: true       # включить: true
+  key: "1"            # клавиша фласки жизни
+  threshold: 0.65     # нажать когда ХП < 65%
+  cooldown_ms: 4500   # пауза между нажатиями (не спамить)
+  hp_region:          # регион орба ХП (доли от размера окна, 0..1)
+    x: 0.01           # левый край
+    y: 0.84           # верхний край
+    w: 0.10           # ширина
+    h: 0.15           # высота
+
+automation:           # авто-фласки/скиллы по таймеру (по умолчанию ВЫКЛ)
+  enabled: false
+  only_when_foreground: true
+  actions:
+    - {name: life_flask, key: "1", interval_ms: 5000, enabled: true}
+    - {name: mana_flask, key: "2", interval_ms: 6000, enabled: true}
+
+overlay:
+  enabled: true
+  show_radius: true
+  poll_ms: 120
+
+logging:
+  level: INFO

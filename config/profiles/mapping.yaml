@@ -1,0 +1,4 @@
+# Профиль "mapping" — зачистка карт: большой радиус, режим hold.
+loot:
+  pickup_radius_px: 600
+  mode: toggle

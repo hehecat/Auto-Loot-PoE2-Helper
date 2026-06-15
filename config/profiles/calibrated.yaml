@@ -1,0 +1,14 @@
+# Настроено вручную: 5 цветов категорий, уменьшен close_px, увеличен min_blob_area
+filter:
+  marker_rgb: [240, 0, 188]
+vision:
+  hue_tolerance: 8
+  sat_min: 120
+  val_min: 120
+  min_blob_area: 120
+  close_px: 3
+loot:
+  pickup_radius_px: 230
+  center_offset_xy:
+  - 0
+  - -40

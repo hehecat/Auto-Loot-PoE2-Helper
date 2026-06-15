@@ -1,0 +1,6 @@
+# Профиль "bossing" — босс: только валюта, малый радиус, клик по нажатию (single).
+loot:
+  pickup_radius_px: 300
+  mode: single
+filter:
+  categories: [currency]   # влияет на патч фильтра (перепатчить после смены)
