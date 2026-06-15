@@ -1,0 +1,10 @@
+# Быстрый профиль: максимальная скорость подбора
+loot:
+  pickup_radius_px: 300
+  click_cooldown_ms: 100
+  dedup_ms: 500
+  randomize_delay_ms: [5, 15]
+  mode: toggle
+
+capture:
+  target_fps: 60
