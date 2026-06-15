@@ -250,10 +250,15 @@ QSlider::handle:horizontal { background: #00ff88; width: 16px; margin: -5px 0; b
 """
 
 
-class Signals(QObject):
-    """Сигналы для обновления GUI из потоков."""
-    status_update = pyqtSignal(dict)
-    log_message = pyqtSignal(str)
+if HAS_PYQT5:
+    class Signals(QObject):
+        """Сигналы для обновления GUI из потоков."""
+        status_update = pyqtSignal(dict)
+        log_message = pyqtSignal(str)
+else:
+    class Signals:
+        def __getattr__(self, name):
+            raise RuntimeError("PyQt5 not installed")
 
 
 class DashboardTab(QWidget):
