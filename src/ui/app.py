@@ -157,12 +157,16 @@ class BotRunner:
 
             gamepad = None
             if cfg.get("gamepad", {}).get("enabled", False):
-                from ..input.gamepad import GamepadEmulator
-                gamepad = GamepadEmulator()
-                if gamepad.enabled:
-                    log.info("Gamepad: active")
-                else:
-                    log.warning("Gamepad: not available")
+                try:
+                    from ..input.gamepad import GamepadEmulator
+                    gamepad = GamepadEmulator()
+                    if gamepad.enabled:
+                        log.info("Gamepad: ACTIVE - mapping loaded")
+                    else:
+                        log.warning("Gamepad: FAILED to initialize")
+                        gamepad = None
+                except Exception as e:
+                    log.error("Gamepad error: %s", e)
                     gamepad = None
 
             engine = LootEngine(
