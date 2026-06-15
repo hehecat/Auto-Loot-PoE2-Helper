@@ -70,7 +70,7 @@ profiles:
 hp_flask:             # авто-фласка ХП при просадке жизней
   enabled: true       # включить: true
   key: "1"            # клавиша фласки жизни (для клавиатуры)
-  input_method: keyboard  # keyboard | gamepad (если gamepad = L2 для HP)
+  input_method: gamepad  # keyboard | gamepad (если gamepad = L2 для HP)
   threshold: 0.65     # нажать когда ХП < 65%
   cooldown_ms: 4500   # пауза между нажатиями (не спамить)
   sound: true         # звуковой сигнал при нажатии фласки
@@ -109,6 +109,6 @@ logging:
   csv_pickup: true        # логировать каждый подбор в CSV (_debug/pickup_log_*.csv)
 
 gamepad:              # эмуляция джойстика (требуется vgamepad)
-  enabled: false      # включить виртуальный Xbox контроллер
+  enabled: true       # включить виртуальный Xbox контроллер
   hp_button: "L2"     # кнопка HP фласки
   pickup_button: "X"  # кнопка подбора лута

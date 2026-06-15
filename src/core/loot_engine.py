@@ -18,31 +18,33 @@ class LootEngine:
 
     def __init__(
         self,
-        mouse: Mouse,
-        region: Dict[str, int],
-        center_offset: List[int],
-        radius: int,
-        cooldown_ms: int,
+        mouse,
+        region,
+        center_offset,
+        radius,
+        cooldown_ms,
         log,
-        dedup_px: int = 24,
-        dedup_ms: int = 0,
-        stuck_timeout_s: float = 5.0,
-        roi_margin_px: int = 100,
+        dedup_px=24,
+        dedup_ms=0,
+        stuck_timeout_s=5.0,
+        roi_margin_px=100,
+        gamepad=None,
     ) -> None:
-        self.mouse: Mouse = mouse
-        self.region: Dict[str, int] = region
-        self.center_offset: List[int] = center_offset
-        self.radius: int = radius
-        self.cooldown: float = cooldown_ms / 1000.0
+        self.mouse = mouse
+        self.region = region
+        self.center_offset = center_offset
+        self.radius = radius
+        self.cooldown = cooldown_ms / 1000.0
         self.log = log
-        self.dedup_px: int = dedup_px
-        self.dedup_ms: float = dedup_ms / 1000.0
-        self._last_click_t: float = 0.0
-        self._recent: List[Tuple[int, int, float]] = []
-        self._stuck_timeout: float = stuck_timeout_s
-        self._stuck_target: Optional[Tuple[int, int]] = None
-        self._stuck_start: float = 0.0
-        self.roi_margin: int = roi_margin_px
+        self.dedup_px = dedup_px
+        self.dedup_ms = dedup_ms / 1000.0
+        self._last_click_t = 0.0
+        self._recent = []
+        self._stuck_timeout = stuck_timeout_s
+        self._stuck_target = None
+        self._stuck_start = 0.0
+        self.roi_margin = roi_margin_px
+        self.gamepad = gamepad
 
     def center(self, frame_shape: Tuple[int, ...]) -> Tuple[int, int]:
         """Центр персонажа в координатах кадра."""
@@ -136,7 +138,10 @@ class LootEngine:
         sx = self.region["left"] + tx
         sy = self.region["top"] + ty
 
-        self.mouse.move_click(sx, sy)
+        if self.gamepad and self.gamepad.enabled:
+            self.gamepad.pickup()
+        else:
+            self.mouse.move_click(sx, sy)
         self._last_click_t = now
         self._recent.append((tx, ty, now))
         return (tx, ty)

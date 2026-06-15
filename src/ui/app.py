@@ -163,6 +163,7 @@ class BotRunner:
                 dedup_ms=loot.get("dedup_ms", 0),
                 stuck_timeout_s=loot.get("stuck_timeout_s", 5.0),
                 roi_margin_px=loot.get("roi_margin_px", 100),
+                gamepad=gamepad,
             )
 
             v = cfg.get("vision", {})
