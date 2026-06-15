@@ -90,7 +90,7 @@ class RadiusOverlay:
 
     def _update(self):
         if self.stop_event.is_set():
-            self._root.destroy()
+            self._root.after(0, self._root.destroy)
             return
 
         state = self.get_state()
@@ -142,6 +142,6 @@ class RadiusOverlay:
     def stop(self):
         if self._root:
             try:
-                self._root.destroy()
+                self._root.after(0, self._root.destroy)
             except Exception:
                 pass

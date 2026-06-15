@@ -103,8 +103,6 @@ class BotRunner:
 
     def stop(self):
         self._stop_event.set()
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=3.0)
         self._running = False
         self._update_status(active=False)
 
