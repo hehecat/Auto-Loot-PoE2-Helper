@@ -154,6 +154,17 @@ class BotRunner:
             loot = cfg["loot"]
             mouse = Mouse(rand_delay_ms=tuple(loot.get("randomize_delay_ms", [20, 70])),
                           human_move=loot.get("human_mouse", True))
+
+            gamepad = None
+            if cfg.get("gamepad", {}).get("enabled", False):
+                from ..input.gamepad import GamepadEmulator
+                gamepad = GamepadEmulator()
+                if gamepad.enabled:
+                    log.info("Gamepad: active")
+                else:
+                    log.warning("Gamepad: not available")
+                    gamepad = None
+
             engine = LootEngine(
                 mouse=mouse, region=region,
                 center_offset=loot.get("center_offset_xy", [0, 0]),
@@ -176,16 +187,9 @@ class BotRunner:
             )
 
             hp_watcher = HPWatcher(cfg.get("hp_flask", {}), log)
+            if gamepad and gamepad.enabled:
+                hp_watcher.set_gamepad(gamepad)
 
-            gamepad = None
-            if cfg.get("gamepad", {}).get("enabled", False):
-                from ..input.gamepad import GamepadEmulator
-                gamepad = GamepadEmulator()
-                if gamepad.enabled:
-                    hp_watcher.set_gamepad(gamepad)
-                    log.info("Gamepad: %s", "active")
-                else:
-                    log.warning("Gamepad: not available")
             pickup_log = PickupLogger()
             stats_collector = StatsCollector()
             stats_collector.start_session()
