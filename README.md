@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="logo.svg" width="800" alt="Auto Loot PoE2 Helper">
+</div>
+
 # Auto Loot PoE2 Helper
 
 Помощник авто-подбора лута для **Path of Exile 2**. Работает исключительно по скриншоту экрана — компьютерное зрение, без чтения памяти игры.

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0a"/>
+      <stop offset="100%" style="stop-color:#1a0a00"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#c8a04a"/>
+      <stop offset="50%" style="stop-color:#ffd700"/>
+      <stop offset="100%" style="stop-color:#c8a04a"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="200" fill="url(#bg)"/>
+  <!-- Decorative border -->
+  <rect x="10" y="10" width="780" height="180" fill="none" stroke="#c8a04a" stroke-width="1" opacity="0.4"/>
+  <rect x="15" y="15" width="770" height="170" fill="none" stroke="#c8a04a" stroke-width="0.5" opacity="0.2"/>
+  <!-- Corner ornaments -->
+  <path d="M10,50 L10,10 L50,10" fill="none" stroke="#ffd700" stroke-width="2" opacity="0.6"/>
+  <path d="M790,50 L790,10 L750,10" fill="none" stroke="#ffd700" stroke-width="2" opacity="0.6"/>
+  <path d="M10,150 L10,190 L50,190" fill="none" stroke="#ffd700" stroke-width="2" opacity="0.6"/>
+  <path d="M790,150 L790,190 L750,190" fill="none" stroke="#ffd700" stroke-width="2" opacity="0.6"/>
+  <!-- Title -->
+  <text x="400" y="85" font-family="Georgia, serif" font-size="38" font-weight="bold" fill="url(#gold)" text-anchor="middle" filter="url(#glow)">Auto Loot PoE2 Helper</text>
+  <!-- Subtitle -->
+  <text x="400" y="125" font-family="Consolas, monospace" font-size="14" fill="#8a7a5a" text-anchor="middle">Computer Vision — No Memory Reading — Python</text>
+  <!-- Decorative line -->
+  <line x1="200" y1="140" x2="600" y2="140" stroke="#c8a04a" stroke-width="0.5" opacity="0.3"/>
+  <!-- Tags -->
+  <text x="400" y="168" font-family="Consolas, monospace" font-size="11" fill="#5a4a3a" text-anchor="middle">dxcam · OpenCV · PyQt5 · pynput · NeverSink Filter Patcher · HP Flask</text>
+</svg>
