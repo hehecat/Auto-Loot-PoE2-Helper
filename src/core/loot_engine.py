@@ -10,7 +10,7 @@ import time
 
 class LootEngine:
     def __init__(self, mouse, region, center_offset, radius, cooldown_ms, log,
-                 dedup_px=24, dedup_ms=0, stuck_timeout_s=5.0):
+                 dedup_px=24, dedup_ms=0, stuck_timeout_s=5.0, roi_margin_px=100):
         self.mouse = mouse
         self.region = region
         self.center_offset = center_offset
@@ -24,6 +24,25 @@ class LootEngine:
         self._stuck_timeout = stuck_timeout_s
         self._stuck_target = None  # (x, y) текущая «застрявшая» цель
         self._stuck_start = 0.0
+        self.roi_margin = roi_margin_px
+
+    def get_roi(self, frame_shape):
+        """Возвращает (x1, y1, x2, y2) ROI вокруг персонажа или None если не нужен."""
+        h, w = frame_shape[:2]
+        cx, cy = self.center(frame_shape)
+        r = self.radius + self.roi_margin
+        x1 = max(0, cx - r)
+        y1 = max(0, cy - r)
+        x2 = min(w, cx + r)
+        y2 = min(h, cy + r)
+        if x2 - x1 >= w and y2 - y1 >= h:
+            return None  # ROI = весь кадр, не надо cropped
+        return (x1, y1, x2, y2)
+
+    def roi_to_frame(self, roi_coords, roi_offset):
+        """Конвертировать координаты из ROI в координаты кадра."""
+        x, y = roi_coords
+        return (x + roi_offset[0], y + roi_offset[1])
 
     def center(self, frame_shape):
         h, w = frame_shape[:2]

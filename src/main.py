@@ -19,13 +19,15 @@ import time
 import cv2
 
 from .capture.screen import ScreenCapture
-from .capture.window import GameWindow
+from .capture.window import GameWindow, monitor_region
 from .config_manager import load_config
 from .core.automation import Automation
 from .core.hp_watcher import HPWatcher
 from .core.loot_engine import LootEngine
+from .core.loot_evaluator import RuleEvaluator, LLMEvaluator
 from .core.pickup_logger import PickupLogger
 from .core.profiles import ProfileManager
+from .core.stats import StatsCollector
 from .input.keyboard import key_matches, parse_key, ComboTracker
 from .input.mouse import Mouse
 from .logger import get_logger
@@ -166,6 +168,11 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
     loot_cfg = cfg.get("loot", {})
     priority_cfg = loot_cfg.get("category_priority", {})
     pickup_log = PickupLogger(enabled=cfg.get("logging", {}).get("csv_pickup", True))
+    stats_collector = StatsCollector()
+    stats_collector.start_session()
+
+    if cap._double_buffer:
+        cap.start_buffer(region, target_fps)
 
     try:
         while not stop_event.is_set():
@@ -183,7 +190,19 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
             with live.lock:
                 det, mode, cat_map = live.det, live.mode, live.cat_map
 
-            points, mask = det.detect(frame)
+            roi = engine.get_roi(frame.shape)
+            if roi:
+                x1, y1, x2, y2 = roi
+                detect_frame = frame[y1:y2, x1:x2]
+                roi_offset = (x1, y1)
+            else:
+                detect_frame = frame
+                roi_offset = (0, 0)
+
+            points, mask = det.detect(detect_frame)
+            if roi:
+                points = [(x + roi_offset[0], y + roi_offset[1], a) for x, y, a in points]
+
             in_radius = engine.targets_in_radius(points, frame.shape)
 
             auto_on, pickup_held = state.snapshot() if state else (False, False)
@@ -225,6 +244,7 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
                     stats[cat] = stats.get(cat, 0) + 1
                     pickup_log.log(cat, tx, ty,
                                    region["left"] + tx, region["top"] + ty)
+                    stats_collector.record(cat, region["left"] + tx, region["top"] + ty)
 
             if hp_watcher:
                 hp_watcher.check(frame, foreground)
@@ -233,6 +253,7 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
                           active=bool(active), picked=picked, auto=auto_on,
                           foreground=foreground,
                           stats=dict(stats),
+                          session_stats=f"{stats_collector.total} предм ({stats_collector.picks_per_minute:.0f}/мин)",
                           hp=round(hp_watcher.hp_ratio * 100) if hp_watcher else None)
 
             now = time.perf_counter()
@@ -268,6 +289,8 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
         stop_event.set()
     finally:
         pickup_log.close()
+        if cap._double_buffer:
+            cap.stop_buffer()
         if args.calibrate:
             cv2.destroyAllWindows()
 
@@ -308,13 +331,15 @@ def main():
             log.warning("Окно '%s' найдено, но свёрнуто — жду разворачивания.",
                         cfg["game"]["window_title"])
     if not win.hwnd or region is None:
-        region = GameWindow.primary_region()
+        monitor_idx = cfg.get("game", {}).get("monitor", 0)
+        region = monitor_region(monitor_idx)
         clicks_enabled = False
-        log.warning("Окно '%s' не найдено/свёрнуто — монитор %s, КЛИКИ ОТКЛЮЧЕНЫ.",
-                    cfg["game"]["window_title"], region)
+        log.warning("Окно '%s' не найдено/свёрнуто — монитор #%s, КЛИКИ ОТКЛЮЧЕНЫ.",
+                    cfg["game"]["window_title"], monitor_idx)
 
-    cap = ScreenCapture(cfg["capture"]["backend"])
-    log.info("Захват: backend=%s", cap.backend)
+    cap = ScreenCapture(cfg["capture"]["backend"],
+                        double_buffer=cfg["capture"].get("double_buffer", False))
+    log.info("Захват: backend=%s, double_buffer=%s", cap.backend, cap._double_buffer)
 
     loot = cfg["loot"]
     mouse = Mouse(
@@ -330,8 +355,22 @@ def main():
         dedup_px=loot.get("dedup_px", 24),
         dedup_ms=loot.get("dedup_ms", 0),
         stuck_timeout_s=loot.get("stuck_timeout_s", 5.0),
+        roi_margin_px=loot.get("roi_margin_px", 100),
     )
     engine.lazy_radius = loot.get("lazy_radius_px", 80)
+
+    loot_eval_cfg = cfg.get("loot_eval", {})
+    if loot_eval_cfg.get("llm_enabled") and loot_eval_cfg.get("llm_api_key"):
+        evaluator = LLMEvaluator(
+            api_key=loot_eval_cfg["llm_api_key"],
+            model=loot_eval_cfg.get("llm_model", "gpt-4o-mini"),
+            base_url=loot_eval_cfg.get("llm_base_url"),
+        )
+        log.info("Loot evaluator: LLM (%s)", loot_eval_cfg.get("llm_model", "gpt-4o-mini"))
+    else:
+        evaluator = RuleEvaluator()
+        log.info("Loot evaluator: rules")
+
     live = Live(det=build_detector(cfg), mode=loot.get("mode", "hold"),
                 cat_map=cfg.get("filter", {}).get("category_colors", {}))
     log.info("Цвета детекции: %s (HSV-окон: %d)", live.det.colors, len(live.det.bounds))
@@ -371,6 +410,7 @@ def main():
     k_pickup = parse_key(cfg["hotkeys"]["pickup"])
     k_profile = parse_key(cfg["hotkeys"].get("profile", "f7"))
     k_reload = parse_key(cfg["hotkeys"].get("reload", "f5"))
+    k_settings = parse_key(cfg["hotkeys"].get("settings", "f6"))
 
     def reload_config():
         nonlocal cfg
@@ -394,6 +434,38 @@ def main():
         except Exception as e:
             log.warning("Ошибка перезагрузки конфига: %s", e)
 
+    def open_settings():
+        try:
+            from .ui.settings_gui import SettingsGUI
+            gui = SettingsGUI(on_apply=apply_settings)
+            gui.open(cfg)
+        except Exception as e:
+            log.warning("GUI настроек не открылось: %s", e)
+
+    def apply_settings(new_cfg):
+        nonlocal cfg
+        try:
+            cfg_update = new_cfg
+            from .config_manager import _deep_merge
+            cfg = _deep_merge(cfg, cfg_update)
+            vp_new = cfg.get("vision", {})
+            loot_new = cfg.get("loot", {})
+            with live.lock:
+                live.det = build_detector(cfg)
+                live.mode = loot_new.get("mode", "hold")
+                live.cat_map = cfg.get("filter", {}).get("category_colors", {})
+            engine.radius = loot_new["pickup_radius_px"]
+            engine.lazy_radius = loot_new.get("lazy_radius_px", 80)
+            engine.cooldown = loot_new.get("click_cooldown_ms", 90) / 1000.0
+            engine.center_offset = loot_new.get("center_offset_xy", [0, 0])
+            engine.dedup_px = loot_new.get("dedup_px", 24)
+            engine.dedup_ms = loot_new.get("dedup_ms", 0) / 1000.0
+            engine._stuck_timeout = loot_new.get("stuck_timeout_s", 5.0)
+            engine.roi_margin = loot_new.get("roi_margin_px", 100)
+            log.info("Настройки применены: mode=%s radius=%d", live.mode, engine.radius)
+        except Exception as e:
+            log.warning("Ошибка применения настроек: %s", e)
+
     listener = None
     combo_tracker = ComboTracker()
     try:
@@ -411,6 +483,8 @@ def main():
                 state.set_pending_profile(pm.next())
             if key_matches(key, k_reload):
                 reload_config()
+            if key_matches(key, k_settings):
+                open_settings()
             if key_matches(key, k_pickup):
                 state.set_pickup(True)
                 if live.mode == "single":
@@ -461,6 +535,7 @@ def main():
             on_toggle=lambda: state.toggle_auto(),
             on_reload=reload_config,
             on_quit=lambda: stop_event.set(),
+            on_settings=open_settings,
             profile_names=pm.names,
             on_profile=lambda name: state.set_pending_profile(name),
         )
@@ -488,6 +563,12 @@ def main():
         listener.stop()
     if tray:
         tray.stop()
+
+    summary, csv_path = stats_collector.end_session()
+    log.info(summary)
+    if csv_path:
+        log.info("Детальный лог: %s", csv_path)
+
     log.info("Остановлено.")
     return 0
 

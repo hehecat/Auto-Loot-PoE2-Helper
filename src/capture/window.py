@@ -1,4 +1,7 @@
-"""Поиск окна игры и его геометрии (клиентская область в экранных координатах)."""
+"""Поиск окна игры и его геометрии (клиентская область в экранных координатах).
+
+Поддержка multi-monitor: выбор монитора по индексу или имени.
+"""
 import win32api
 import win32gui
 
@@ -44,3 +47,45 @@ class GameWindow:
             "width": win32api.GetSystemMetrics(0),
             "height": win32api.GetSystemMetrics(1),
         }
+
+
+def list_monitors():
+    """Список всех мониторов: [{"index": 0, "left": 0, "top": 0, "width": 1920, "height": 1080, "primary": True}, ...]"""
+    monitors = []
+
+    def _callback(hMonitor, hdc, lprcMonitor, dwData):
+        rc = lprcMonitor
+        monitors.append({
+            "index": len(monitors),
+            "left": rc.left,
+            "top": rc.top,
+            "width": rc.right - rc.left,
+            "height": rc.bottom - rc.top,
+            "primary": rc.left == 0 and rc.top == 0,
+        })
+
+    try:
+        win32api.EnumDisplayMonitors(None, None, _callback, 0)
+    except Exception:
+        pass
+
+    if not monitors:
+        monitors.append({
+            "index": 0,
+            "left": 0, "top": 0,
+            "width": win32api.GetSystemMetrics(0),
+            "height": win32api.GetSystemMetrics(1),
+            "primary": True,
+        })
+
+    return monitors
+
+
+def monitor_region(index=0):
+    """Регион конкретного монитора по индексу."""
+    monitors = list_monitors()
+    if 0 <= index < len(monitors):
+        m = monitors[index]
+        return {"left": m["left"], "top": m["top"],
+                "width": m["width"], "height": m["height"]}
+    return GameWindow.primary_region()

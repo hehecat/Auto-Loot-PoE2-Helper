@@ -1,7 +1,7 @@
 """Системный трей-икон (pystray) с основными управлениями.
 
 Трей создаётся в отдельном потоке (daemon). Иконка показывает статус
-и提供 контекстное меню: Toggle, Profile, Reload, Quit.
+и提供 контекстное меню: Toggle, Profile, Settings, Reload, Quit.
 """
 import logging
 import threading
@@ -27,12 +27,13 @@ def _make_icon(color="#00ff88"):
 
 class TrayIcon:
     def __init__(self, state, stop_event, on_toggle, on_reload, on_quit,
-                 profile_names=None, on_profile=None):
+                 on_settings=None, profile_names=None, on_profile=None):
         self.state = state
         self.stop_event = stop_event
         self.on_toggle = on_toggle
         self.on_reload = on_reload
         self.on_quit = on_quit
+        self.on_settings = on_settings
         self.profile_names = profile_names or []
         self.on_profile = on_profile
         self._icon = None
@@ -54,9 +55,14 @@ class TrayIcon:
 
     def _run(self):
         try:
+            def _settings():
+                if self.on_settings:
+                    self.on_settings()
+
             menu = pystray.Menu(
                 pystray.MenuItem("Toggle (F8)", lambda: self.on_toggle(),
                                  default=True),
+                pystray.MenuItem("Settings (F6)", _settings),
                 pystray.MenuItem("Reload (F5)", lambda: self.on_reload()),
                 pystray.Menu.SEPARATOR,
                 *self._profile_items(),

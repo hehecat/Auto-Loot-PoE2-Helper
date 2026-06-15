@@ -2,10 +2,12 @@
 
 game:
   window_title: "Path of Exile 2"
+  monitor: 0            # индекс монитора (0 = основной; -1 = определить по окну)
 
 capture:
   backend: dxcam        # dxcam | mss (dxcam быстрее; при сбое авто-фолбэк на mss)
   target_fps: 30
+  double_buffer: true   # фоновый захват кадров (сглаживает тайминг)
 
 filter:
   path: "C:/Users/OLD/Documents/My Games/Path of Exile 2/Vladislav Yoshi Perfection.filter"
@@ -32,6 +34,7 @@ vision:
 loot:
   pickup_radius_px: 250  # только близкий лут (большой радиус -> беготня к дальнему)
   lazy_radius_px: 80     # радиус подбора вокруг КУРСОРА в режиме lazy
+  roi_margin_px: 100     # допуск вокруг радиуса для захвата ROI (захват чуть больше радиуса)
   click_cooldown_ms: 300 # пауза между кликами (мало -> мельтешение, не успевает поднять)
   dedup_ms: 2500         # 0 = прилипание к ближайшей цели; >0 = не кликать ту же точку N мс
   dedup_px: 24           # допуск расстояния для анти-дабл-клика (пиксели)
@@ -51,6 +54,7 @@ hotkeys:
   pickup: "space"
   profile: "f7"       # циклическое переключение профилей на лету
   reload: "f5"        # перезагрузить конфиг
+  settings: "f6"      # открыть GUI настроек
   calibrate: "f9"
   quit: "f12"
 
@@ -75,6 +79,12 @@ automation:           # авто-фласки/скиллы по таймеру (
   actions:
     - {name: life_flask, key: "1", interval_ms: 5000, enabled: true}
     - {name: mana_flask, key: "2", interval_ms: 6000, enabled: true}
+
+loot_eval:            # оценка лута (правила или LLM)
+  llm_enabled: false  # включить LLM-оценку (требует API ключ)
+  llm_api_key: null   # OpenAI API ключ (или совместимый)
+  llm_model: "gpt-4o-mini"  # модель для оценки
+  llm_base_url: null  # кастомный base_url (для совместимых API)
 
 overlay:
   enabled: true

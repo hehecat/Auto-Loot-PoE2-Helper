@@ -144,6 +144,9 @@ class Overlay:
         stat_parts = [f"{short}:{stats[k]}" for k, short in _labels if stats.get(k)]
         if stat_parts:
             text += "\n" + "  ".join(stat_parts)
+        session_stats = s.get("session_stats")
+        if session_stats:
+            text += f"\nсессия: {session_stats}"
         if not s.get("clicks_enabled", True):
             text += "\n[!] окно PoE2 не найдено — клики off"
         elif not s.get("foreground", True):
