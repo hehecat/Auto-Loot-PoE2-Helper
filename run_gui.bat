@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-python -m src.main --gui
+C:\Users\OLD\anaconda3\python.exe -m src.main --gui
 pause
