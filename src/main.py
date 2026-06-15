@@ -28,6 +28,9 @@ from .core.loot_evaluator import RuleEvaluator, LLMEvaluator
 from .core.pickup_logger import PickupLogger
 from .core.profiles import ProfileManager
 from .core.stats import StatsCollector
+from .core.auto_calibrate import try_auto_calibrate
+from .core.telegram_notify import TelegramNotifier
+from .core.html_report import generate_html_report
 from .input.keyboard import key_matches, parse_key, ComboTracker
 from .input.mouse import Mouse
 from .logger import get_logger
@@ -41,6 +44,7 @@ class State:
         self.pickup_held = False
         self.single_request = False
         self.pending_profile = None
+        self.active_categories = None  # None = все, set = только указанные
 
     def toggle_auto(self):
         with self._lock:
@@ -71,6 +75,16 @@ class State:
             name = self.pending_profile
             self.pending_profile = None
             return name
+
+    def set_category_filter(self, categories):
+        """Установить фильтр категорий (None = все)."""
+        with self._lock:
+            self.active_categories = set(categories) if categories else None
+
+    def get_active_categories(self):
+        """Получить активные категории."""
+        with self._lock:
+            return self.active_categories
 
     def snapshot(self):
         with self._lock:
@@ -206,6 +220,20 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
             in_radius = engine.targets_in_radius(points, frame.shape)
 
             auto_on, pickup_held = state.snapshot() if state else (False, False)
+            active_categories = state.get_active_categories() if state else None
+
+            if active_categories and in_radius:
+                hue_tol = vp.get("hue_tolerance", 8)
+                sat_min = vp.get("sat_min", 120)
+                val_min = vp.get("val_min", 120)
+                hsv_check = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                filtered = []
+                for p in in_radius:
+                    cat = category_for_pixel(hsv_check, p[0], p[1], cat_map,
+                                             hue_tol, sat_min, val_min)
+                    if cat in active_categories:
+                        filtered.append(p)
+                in_radius = filtered
             active = (
                 (mode == "hold" and pickup_held)
                 or (mode in ("toggle", "lazy") and auto_on)
@@ -245,6 +273,7 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
                     pickup_log.log(cat, tx, ty,
                                    region["left"] + tx, region["top"] + ty)
                     stats_collector.record(cat, region["left"] + tx, region["top"] + ty)
+                    telegram.notify(cat, x=region["left"] + tx, y=region["top"] + ty)
 
             if hp_watcher:
                 hp_watcher.check(frame, foreground)
@@ -253,6 +282,7 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
                           active=bool(active), picked=picked, auto=auto_on,
                           foreground=foreground,
                           stats=dict(stats),
+                          active_cat=", ".join(sorted(active_categories)) if active_categories else "all",
                           session_stats=f"{stats_collector.total} предм ({stats_collector.picks_per_minute:.0f}/мин)",
                           hp=round(hp_watcher.hp_ratio * 100) if hp_watcher else None)
 
@@ -341,6 +371,15 @@ def main():
                         double_buffer=cfg["capture"].get("double_buffer", False))
     log.info("Захват: backend=%s, double_buffer=%s", cap.backend, cap._double_buffer)
 
+    if cfg.get("vision", {}).get("auto_calibrate", False) and region:
+        detected = try_auto_calibrate(cap, region)
+        if detected:
+            for name, rgb in detected.items():
+                cat_name = name.split("_")[0]
+                if cat_name not in cfg.get("filter", {}).get("category_colors", {}):
+                    cfg.setdefault("filter", {}).setdefault("category_colors", {})[cat_name] = rgb
+            log.info("Автокалибровка: цвета применены из кадра")
+
     loot = cfg["loot"]
     mouse = Mouse(
         rand_delay_ms=tuple(loot.get("randomize_delay_ms", [20, 70])),
@@ -370,6 +409,13 @@ def main():
     else:
         evaluator = RuleEvaluator()
         log.info("Loot evaluator: rules")
+
+    tg_cfg = cfg.get("telegram", {})
+    telegram = TelegramNotifier(
+        bot_token=tg_cfg.get("bot_token"),
+        chat_id=tg_cfg.get("chat_id"),
+        enabled=tg_cfg.get("enabled", False),
+    )
 
     live = Live(det=build_detector(cfg), mode=loot.get("mode", "hold"),
                 cat_map=cfg.get("filter", {}).get("category_colors", {}))
@@ -411,6 +457,10 @@ def main():
     k_profile = parse_key(cfg["hotkeys"].get("profile", "f7"))
     k_reload = parse_key(cfg["hotkeys"].get("reload", "f5"))
     k_settings = parse_key(cfg["hotkeys"].get("settings", "f6"))
+
+    cat_hotkeys = {}
+    for cat_name, key_spec in cfg.get("hotkeys", {}).get("category_hotkeys", {}).items():
+        cat_hotkeys[parse_key(key_spec)] = cat_name
 
     def reload_config():
         nonlocal cfg
@@ -485,6 +535,10 @@ def main():
                 reload_config()
             if key_matches(key, k_settings):
                 open_settings()
+            if key in cat_hotkeys:
+                cat = cat_hotkeys[key]
+                state.set_category_filter([cat])
+                log.info("Категория: %s (только эта)", cat)
             if key_matches(key, k_pickup):
                 state.set_pickup(True)
                 if live.mode == "single":
@@ -492,6 +546,9 @@ def main():
 
         def on_release(key):
             combo_tracker.on_release(key)
+            if key in cat_hotkeys:
+                state.set_category_filter(None)
+                log.info("Категории: все")
             if key_matches(key, k_pickup):
                 state.set_pickup(False)
 
@@ -568,6 +625,12 @@ def main():
     log.info(summary)
     if csv_path:
         log.info("Детальный лог: %s", csv_path)
+
+    try:
+        report_path = generate_html_report(stats_collector.session)
+        log.info("HTML отчёт: %s", report_path)
+    except Exception as e:
+        log.debug("HTML отчёт не сгенерирован: %s", e)
 
     log.info("Остановлено.")
     return 0

@@ -30,6 +30,7 @@ vision:
   sat_min: 120          # мин. насыщенность
   val_min: 120          # мин. яркость
   close_px: 3           # лёгкая склейка (плотные подписи; большая склеивает соседние)
+  auto_calibrate: false # авто-определение цветов фильтра при старте
 
 loot:
   pickup_radius_px: 250  # только близкий лут (большой радиус -> беготня к дальнему)
@@ -57,6 +58,11 @@ hotkeys:
   settings: "f6"      # открыть GUI настроек
   calibrate: "f9"
   quit: "f12"
+  category_hotkeys:   # клавиши для быстрого включения/выключения категорий
+    currency: "1"     # зажми 1 = подбирать только валюту
+    fragments: "2"    # зажми 2 = подбирать только фрагменты
+    gems: "3"         # зажми 3 = подбирать только гемы
+    waystones: "4"    # зажми 4 = подбирать только вейстоуны
 
 profiles:
   start: null         # имя профиля при старте (без .yaml); null = default
@@ -85,6 +91,11 @@ loot_eval:            # оценка лута (правила или LLM)
   llm_api_key: null   # OpenAI API ключ (или совместимый)
   llm_model: "gpt-4o-mini"  # модель для оценки
   llm_base_url: null  # кастомный base_url (для совместимых API)
+
+telegram:             # уведомления о редких дропах
+  enabled: false
+  bot_token: null     # токен Telegram бота (от @BotFather)
+  chat_id: null       # ID чата для уведомлений
 
 overlay:
   enabled: true

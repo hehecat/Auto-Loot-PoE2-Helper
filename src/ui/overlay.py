@@ -137,6 +137,7 @@ class Overlay:
             f"targets : {s.get('targets', 0)}  (radius {s.get('in_radius', 0)})\n"
             f"picked  : {s.get('picked', 0)}{hp_str}\n"
             f"master  : {master}   automation: {autom}\n"
+            f"cat     : {s.get('active_cat', 'all')}\n"
             f"quit    : {s.get('quit_key', 'F12')}  drag: F10/RMB"
         )
         stats = s.get("stats", {})
