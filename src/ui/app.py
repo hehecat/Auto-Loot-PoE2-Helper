@@ -119,6 +119,7 @@ class BotRunner:
                 "in_radius": self._status.get("in_radius", 0),
                 "center_offset": self._status.get("center_offset", [0, 0]),
                 "frame_size": self._status.get("frame_size", [1920, 1080]),
+                "window_region": self._status.get("window_region", None),
             }
 
     def _update_status(self, **kw):
@@ -258,6 +259,7 @@ class BotRunner:
                         radius=self._radius,
                         center_offset=engine.center_offset,
                         frame_size=[frame.shape[1], frame.shape[0]],
+                        window_region=region,
                         session_stats=f"{stats_collector.session.total} items ({stats_collector.session.picks_per_minute:.0f}/min)",
                     )
 

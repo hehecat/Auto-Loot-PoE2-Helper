@@ -1,7 +1,7 @@
 """Прозрачный оверлей с 3D-эллипсом радиуса подбора поверх игры.
 
 Отображает эллипс (перспективная проекция круга на пол),
-метки целей и информацию о статусе.
+метки целей и информацию о статусе. Привязан к окну игры.
 """
 from __future__ import annotations
 
@@ -30,9 +30,12 @@ class RadiusOverlay:
         self._dragging = False
         self._drag_start_r = 0
         self._drag_start_y = 0
-        self._targets = []
         self._pulse = 0
         self._pulse_dir = 1
+        self._win_left = 0
+        self._win_top = 0
+        self._win_w = 1920
+        self._win_h = 1080
 
     def run(self):
         if not HAS_TK:
@@ -47,13 +50,8 @@ class RadiusOverlay:
 
         screen_w = self._root.winfo_screenwidth()
         screen_h = self._root.winfo_screenheight()
-        self._screen_w = screen_w
-        self._screen_h = screen_h
-        size = max(screen_w, screen_h)
-        self._size = size
-        x = (screen_w - size) // 2
-        y = (screen_h - size) // 2
-        self._root.geometry(f"{size}x{size}+{x}+{y}")
+
+        self._root.geometry(f"{screen_w}x{screen_h}+0+0")
 
         try:
             self._root.attributes("-transparentcolor", "black")
@@ -61,12 +59,12 @@ class RadiusOverlay:
             pass
 
         self._canvas = tk.Canvas(
-            self._root, width=size, height=size,
+            self._root, width=screen_w, height=screen_h,
             bg="black", highlightthickness=0)
         self._canvas.pack()
 
-        self._cx = size // 2
-        self._cy = size // 2
+        self._screen_w = screen_w
+        self._screen_h = screen_h
 
         self._canvas.bind("<Button-1>", self._on_press)
         self._canvas.bind("<B1-Motion>", self._on_drag)
@@ -132,15 +130,24 @@ class RadiusOverlay:
         in_radius = state.get("in_radius", 0)
         center_offset = state.get("center_offset", [0, 0])
         frame_size = state.get("frame_size", [1920, 1080])
+        win_region = state.get("window_region", None)
 
         self._canvas.delete("all")
 
-        fw, fh = frame_size
-        scale = self._size / max(fw, fh)
+        if win_region:
+            self._win_left = win_region.get("left", 0)
+            self._win_top = win_region.get("top", 0)
+            self._win_w = win_region.get("width", 1920)
+            self._win_h = win_region.get("height", 1080)
 
-        char_cx = self._cx + int(center_offset[0] * scale)
-        char_cy = self._cy + int(center_offset[1] * scale)
-        r = int(self._radius * scale)
+        fw, fh = frame_size
+        scale_x = self._win_w / fw
+        scale_y = self._win_h / fh
+
+        char_cx = self._win_left + self._win_w // 2 + int(center_offset[0] * scale_x)
+        char_cy = self._win_top + self._win_h // 2 + int(center_offset[1] * scale_y)
+
+        r = int(self._radius * scale_x)
         ry = int(r * self.PERSPECTIVE)
 
         color = "#00ff88" if active else "#ff4444"
