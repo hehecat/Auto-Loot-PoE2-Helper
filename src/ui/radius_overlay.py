@@ -1,9 +1,11 @@
-"""Прозрачный оверлей с кругом радиуса подбора поверх игры.
+"""Прозрачный оверлей с 3D-эллипсом радиуса подбора поверх игры.
 
-Отображает круг радиуса, точку центра персонажа и все обнаруженные цели.
+Отображает эллипс (перспективная проекция круга на пол),
+метки целей и информацию о статусе.
 """
 from __future__ import annotations
 
+import math
 import threading
 
 try:
@@ -15,7 +17,9 @@ except ImportError:
 
 
 class RadiusOverlay:
-    """Прозрачный оверлей с кругом радиуса и метками целей."""
+    """Прозрачный оверлей с 3D-эллипсом радиуса и метками целей."""
+
+    PERSPECTIVE = 0.55
 
     def __init__(self, stop_event, get_state_fn):
         self.stop_event = stop_event
@@ -26,6 +30,9 @@ class RadiusOverlay:
         self._dragging = False
         self._drag_start_r = 0
         self._drag_start_y = 0
+        self._targets = []
+        self._pulse = 0
+        self._pulse_dir = 1
 
     def run(self):
         if not HAS_TK:
@@ -35,7 +42,7 @@ class RadiusOverlay:
         self._root.title("Radius")
         self._root.overrideredirect(True)
         self._root.attributes("-topmost", True)
-        self._root.attributes("-alpha", 0.5)
+        self._root.attributes("-alpha", 0.6)
         self._root.config(bg="black")
 
         screen_w = self._root.winfo_screenwidth()
@@ -88,6 +95,31 @@ class RadiusOverlay:
         else:
             self._radius = max(50, self._radius - 10)
 
+    def _draw_glow_ellipse(self, cx, cy, rx, ry, color, alpha_steps=5):
+        for i in range(alpha_steps, 0, -1):
+            factor = i / alpha_steps
+            expand = 1.0 + (alpha_steps - i) * 0.06
+            erx = int(rx * expand)
+            ery = int(ry * expand)
+            r, g, b = self._hex_to_rgb(color)
+            fade = int(255 * factor * 0.3)
+            c = f"#{min(255, r + fade):02x}{min(255, g + fade):02x}{min(255, b + fade):02x}"
+            self._canvas.create_oval(
+                cx - erx, cy - ery, cx + erx, cy + ery,
+                outline=c, width=1, dash=(4, 4))
+
+    def _draw_pulsing_ring(self, cx, cy, rx, ry, color):
+        pulse = self._pulse
+        expand = 1.0 + pulse * 0.08
+        erx = int(rx * expand)
+        ery = int(ry * expand)
+        r, g, b = self._hex_to_rgb(color)
+        brightness = int(100 + 155 * (1.0 - pulse))
+        c = f"#{min(255, r + brightness // 4):02x}{min(255, g + brightness // 4):02x}{min(255, b + brightness // 4):02x}"
+        self._canvas.create_oval(
+            cx - erx, cy - ery, cx + erx, cy + ery,
+            outline=c, width=1)
+
     def _update(self):
         if self.stop_event.is_set():
             self._root.after(0, self._root.destroy)
@@ -109,35 +141,64 @@ class RadiusOverlay:
         char_cx = self._cx + int(center_offset[0] * scale)
         char_cy = self._cy + int(center_offset[1] * scale)
         r = int(self._radius * scale)
+        ry = int(r * self.PERSPECTIVE)
 
         color = "#00ff88" if active else "#ff4444"
 
-        self._canvas.create_oval(
-            char_cx - r, char_cy - r, char_cx + r, char_cy + r,
-            outline=color, width=2, dash=(6, 4))
+        self._pulse += 0.08 * self._pulse_dir
+        if self._pulse >= 1.0:
+            self._pulse_dir = -1
+        elif self._pulse <= 0.0:
+            self._pulse_dir = 1
+
+        self._draw_glow_ellipse(char_cx, char_cy, r, ry, color)
+        self._draw_pulsing_ring(char_cx, char_cy, r, ry, color)
 
         self._canvas.create_oval(
-            char_cx - 6, char_cy - 6, char_cx + 6, char_cy + 6,
-            fill=color, outline="")
+            char_cx - r, char_cy - ry, char_cx + r, char_cy + ry,
+            outline=color, width=2)
 
-        self._canvas.create_line(char_cx - 15, char_cy, char_cx + 15, char_cy, fill=color, width=1)
-        self._canvas.create_line(char_cx, char_cy - 15, char_cx, char_cy + 15, fill=color, width=1)
+        inner_rx = int(r * 0.35)
+        inner_ry = int(ry * 0.35)
+        self._canvas.create_oval(
+            char_cx - inner_rx, char_cy - inner_ry,
+            char_cx + inner_rx, char_cy + inner_ry,
+            outline=color, width=1, dash=(3, 5))
 
-        f = tkfont.Font(family="Consolas", size=11, weight="bold")
+        self._draw_crosshair(char_cx, char_cy, color)
+
+        f_label = tkfont.Font(family="Consolas", size=11, weight="bold")
         self._canvas.create_text(
-            char_cx, char_cy - r - 15,
+            char_cx, char_cy - ry - 18,
             text=f"R={self._radius}px",
-            fill=color, font=f)
-        self._canvas.create_text(
-            char_cx, char_cy + r + 15,
-            text=f"targets:{targets} in:{in_radius}",
-            fill=color, font=f)
-        self._canvas.create_text(
-            char_cx, char_cy + r + 30,
-            text="drag=resize | scroll=adjust",
-            fill="#888888", font=tkfont.Font(family="Consolas", size=9))
+            fill=color, font=f_label)
 
-        self._root.after(100, self._update)
+        self._canvas.create_text(
+            char_cx, char_cy + ry + 18,
+            text=f"{targets} targets | {in_radius} in range",
+            fill=color, font=f_label)
+
+        f_hint = tkfont.Font(family="Consolas", size=9)
+        self._canvas.create_text(
+            char_cx, char_cy + ry + 34,
+            text="drag=resize | scroll=adjust",
+            fill="#666666", font=f_hint)
+
+        self._root.after(50, self._update)
+
+    def _draw_crosshair(self, cx, cy, color):
+        arm = 8
+        gap = 4
+        w = 1
+        self._canvas.create_line(cx - arm - gap, cy, cx - gap, cy, fill=color, width=w)
+        self._canvas.create_line(cx + gap, cy, cx + arm + gap, cy, fill=color, width=w)
+        self._canvas.create_line(cx, cy - arm - gap, cx, cy - gap, fill=color, width=w)
+        self._canvas.create_line(cx, cy + gap, cx, cy + arm + gap, fill=color, width=w)
+
+    @staticmethod
+    def _hex_to_rgb(hex_color):
+        hex_color = hex_color.lstrip("#")
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
     def stop(self):
         if self._root:
