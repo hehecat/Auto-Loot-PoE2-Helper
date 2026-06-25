@@ -1,6 +1,6 @@
-"""Детекция цвета(ов)-маркера: HSV-маски вокруг заданных RGB -> центры пятен (цели).
+"""标记颜色检测：基于给定 RGB 的 HSV 掩码 -> 斑点中心（目标）。
 
-Поддерживает один цвет ([r,g,b]) или несколько ([[r,g,b], ...]) — маски объединяются.
+支持单种颜色（[r,g,b]）或多种颜色（[[r,g,b], ...]）— 掩码会合并。
 """
 from __future__ import annotations
 
@@ -14,13 +14,13 @@ from numpy.typing import NDArray
 def rgb_to_hsv_bounds(
     marker_rgb: List[int], hue_tol: int = 8, sat_min: int = 120, val_min: int = 120
 ) -> List[Tuple[NDArray[np.uint8], NDArray[np.uint8]]]:
-    """RGB маркера -> список (low, high) границ в HSV.
+    """标记 RGB -> HSV 中的 (low, high) 边界列表。
 
-    Красный HSV оборачивается: H=0 и H=172-179 — оба красный.
-    Для красных оттенков возвращает два диапазона (wrap-around).
+    红色 HSV 环绕处理：H=0 和 H=172-179 — 两者都是红色。
+    对于红色色调，返回两个范围（环绕）。
     """
     r, g, b = marker_rgb
-    px = np.uint8([[[b, g, r]]])  # OpenCV ждёт BGR
+    px = np.uint8([[[b, g, r]]])  # OpenCV 需要 BGR
     h = int(cv2.cvtColor(px, cv2.COLOR_BGR2HSV)[0][0][0])
     lo = h - hue_tol
     hi = h + hue_tol
@@ -43,7 +43,7 @@ def rgb_to_hsv_bounds(
 
 
 def normalize_colors(markers: list) -> List[List[int]]:
-    """[r,g,b] -> [[r,g,b]]; [[r,g,b],...] остаётся списком."""
+    """[r,g,b] -> [[r,g,b]]；[[r,g,b],...] 保持为列表。"""
     if not markers:
         return []
     if isinstance(markers[0], (list, tuple)):
@@ -52,7 +52,7 @@ def normalize_colors(markers: list) -> List[List[int]]:
 
 
 class ColorDetector:
-    """Детектор цветовых маркеров на кадре через HSV-маски."""
+    """通过 HSV 掩码在帧上检测颜色标记。"""
 
     def __init__(
         self,
@@ -75,18 +75,18 @@ class ColorDetector:
 
     @property
     def low(self) -> NDArray:
-        """Границы первого диапазона первого цвета (для совместимости)."""
+        """第一个颜色的第一个范围的下界（用于兼容性）。"""
         return self.bounds[0][0][0]
 
     @property
     def high(self) -> NDArray:
-        """Верхняя граница первого диапазона первого цвета."""
+        """第一个颜色的第一个范围的上界。"""
         return self.bounds[0][0][1]
 
     def detect(
         self, frame_bgr: NDArray
     ) -> Tuple[List[Tuple[int, int, float]], NDArray]:
-        """Возвращает (points, mask), где points = [(cx, cy, area), ...] по убыванию площади."""
+        """返回 (points, mask)，其中 points = [(cx, cy, area), ...] 按面积降序排列。"""
         hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
         mask: Optional[NDArray] = None
         for ranges in self.bounds:

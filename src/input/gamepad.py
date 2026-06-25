@@ -1,12 +1,12 @@
-"""Эмуляция ввода для PoE2 через виртуальный Xbox контроллер.
+"""通过虚拟 Xbox 控制器模拟 PoE2 输入。
 
-Решает проблему: когда подключён реальный DualSense, PoE2 игнорирует
-виртуальные контроллеры. Решение:
-1. Создаём виртуальный Xbox через vgamepad
-2. Heartbeat-поток обновляет контроллер каждые 50мс
-3. При остановке восстанавливаем контроллеры
+解决问题：当连接了真实 DualSense 时，PoE2 会忽略虚拟控制器。
+解决方案：
+1. 通过 vgamepad 创建虚拟 Xbox
+2. 心跳线程每 50ms 更新控制器
+3. 停止时恢复控制器状态
 
-Маппинг кнопок настраивается через DS4Windows.
+按键映射通过 DS4Windows 配置。
 """
 import ctypes
 import ctypes.wintypes as wintypes
@@ -52,18 +52,18 @@ TRIGGER_ACTIONS = {
 
 # PoE2 action -> Xbox button (DEFAULT PoE2 controller layout)
 ACTION_TO_XBOX = {
-    "pickup":        "a",              # A (Cross) = Подбор предметов
-    "hp_flask":      "left_trigger",   # LT (L2) = HP фласка
-    "mana_flask":    "right_trigger",  # RT (R2) = Mana фласка
-    "attack":        "x",              # X (Square) = Атака
-    "dodge":         "b",              # B (Circle) = Уклонение
-    "skill_2":       "y",              # Y (Triangle) = Skill 2
-    "inventory":     "left_bumper",    # LB (L1) = Инвентарь
-    "highlight":     "left_stick",     # L3 = Подсветка предметов
-    "weapon_set":    "right_stick",    # R3 = Switch Weapon Set
-    "map":           "dpad_down",      # D-pad Down = Карта
-    "menu":          "start",          # Start = Меню
-    "portal":        "dpad_right",     # D-pad Right = Портал
+    "pickup":        "a",              # A (Cross) = 拾取物品
+    "hp_flask":      "left_trigger",   # LT (L2) = HP 血瓶
+    "mana_flask":    "right_trigger",  # RT (R2) = Mana 蓝瓶
+    "attack":        "x",              # X (Square) = 攻击
+    "dodge":         "b",              # B (Circle) = 闪避
+    "skill_2":       "y",              # Y (Triangle) = 技能 2
+    "inventory":     "left_bumper",    # LB (L1) = 背包
+    "highlight":     "left_stick",     # L3 = 高亮物品
+    "weapon_set":    "right_stick",    # R3 = 切换武器组
+    "map":           "dpad_down",      # D-pad Down = 地图
+    "menu":          "start",          # Start = 菜单
+    "portal":        "dpad_right",     # D-pad Right = 传送门
 }
 
 
@@ -75,7 +75,7 @@ def _is_admin():
 
 
 def _disable_hid_powershell():
-    """Отключить ТОЛЬКО DualSense через PowerShell (требует админа)."""
+    """仅通过 PowerShell 禁用 DualSense（需要管理员权限）。"""
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command",
@@ -95,7 +95,7 @@ def _disable_hid_powershell():
 
 
 def _enable_hid_powershell():
-    """Включить DualSense через PowerShell."""
+    """通过 PowerShell 启用 DualSense。"""
     try:
         subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command",
@@ -109,7 +109,7 @@ def _enable_hid_powershell():
 
 
 class GamepadEmulator:
-    """Эмуляция Xbox контроллера через vgamepad."""
+    """通过 vgamepad 模拟 Xbox 控制器。"""
 
     def __init__(self):
         self.enabled = False
@@ -121,31 +121,31 @@ class GamepadEmulator:
         self._bridge = None
 
     def start(self):
-        """Инициализация: создаём виртуальный Xbox.
+        """初始化：创建虚拟 Xbox。
 
-        DualSense НЕ отключается — он продолжает работать для ручного управления.
-        Бот отправляет команды (pickup, flasks) через виртуальный Xbox.
-        PoE2 принимает ввод с обоих контроллеров.
+        DualSense 不会被禁用 — 它继续用于手动控制。
+        机器人通过虚拟 Xbox 发送命令（拾取、血瓶）。
+        PoE2 接受来自两个控制器的输入。
         """
         if not HAS_VGAMEPAD:
             _log.error("vgamepad not installed. pip install vgamepad")
             return False
 
-        # Восстанавливаем DualSense если был отключён ранее
+        # 恢复 DualSense（如果之前被禁用）
         _enable_hid_powershell()
         time.sleep(0.3)
 
-        # Создаём виртуальный Xbox 360 контроллер
+        # 创建虚拟 Xbox 360 控制器
         self._gamepad = vg.VX360Gamepad()
-        # reset + update инициализируют контроллер для XInput
+        # reset + update 初始化控制器以支持 XInput
         self._gamepad.reset()
         self._gamepad.update()
         time.sleep(0.3)
 
-        # Запускаем heartbeat чтобы SDL2 поддерживал контроллер активным
+        # 启动心跳线程以保持 SDL2 控制器活跃
         self._start_heartbeat()
 
-        # Запускаем мост DualSense → Virtual Xbox
+        # 启动 DualSense → Virtual Xbox 桥接
         self._bridge = None
         try:
             from .dualsense_hid import DualSenseHIDReader
@@ -165,7 +165,7 @@ class GamepadEmulator:
         return True
 
     def stop(self):
-        """Остановка."""
+        """停止。"""
         if self._bridge:
             try:
                 self._bridge.stop()
@@ -208,7 +208,7 @@ class GamepadEmulator:
             self._heartbeat_stop.wait(0.05)  # 50ms = 20Hz
 
     def press_button(self, action, hold_ms=100):
-        """Нажать кнопку или триггер по действию."""
+        """根据动作按下按钮或扳机。"""
         if not self.enabled or not self._gamepad:
             return False
 
@@ -217,7 +217,7 @@ class GamepadEmulator:
             _log.warning("Unknown action: %s", action)
             return False
 
-        # Проверяем триггеры (L2/R2)
+        # 检查扳机（L2/R2）
         trigger_side = TRIGGER_ACTIONS.get(btn_name)
         if trigger_side:
             try:
@@ -239,7 +239,7 @@ class GamepadEmulator:
                 _log.error("Trigger press failed: %s", e)
                 return False
 
-        # Обычные кнопки
+        # 普通按钮
         btn_mask = XINPUT_BUTTONS.get(btn_name)
         if not btn_mask:
             _log.warning("Unknown Xbox button: %s", btn_name)
@@ -259,7 +259,7 @@ class GamepadEmulator:
             return False
 
     def set_trigger(self, trigger, value):
-        """Установить значение триггера (0-255)."""
+        """设置扳机值（0-255）。"""
         if not self.enabled or not self._gamepad:
             return
         try:
@@ -272,7 +272,7 @@ class GamepadEmulator:
             _log.error("Trigger set failed: %s", e)
 
     def set_stick(self, stick, x, y):
-        """Установить стик (x, y: -32767..32767)."""
+        """设置摇杆（x, y: -32767..32767）。"""
         if not self.enabled or not self._gamepad:
             return
         try:
@@ -285,14 +285,14 @@ class GamepadEmulator:
             _log.error("Stick set failed: %s", e)
 
     def get_button_id(self, action):
-        """Получить ID кнопки по действию (из ACTION_TO_XBOX)."""
+        """根据动作获取按钮 ID（来自 ACTION_TO_XBOX）。"""
         return ACTION_TO_XBOX.get(action)
 
-    # --- Совместимость со старым API ---
+    # --- 与旧 API 的兼容性 ---
     def pickup(self):
-        """Подобрать лут (нажать A/Cross)."""
+        """拾取物品（按下 A/Cross）。"""
         self.press_button("pickup", hold_ms=100)
 
     def use_hp_flask(self):
-        """Использовать HP фласку (нажать L2/LT)."""
+        """使用 HP 血瓶（按下 L2/LT）。"""
         self.press_button("hp_flask", hold_ms=100)

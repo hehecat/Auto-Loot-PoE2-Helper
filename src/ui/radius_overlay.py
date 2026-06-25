@@ -1,6 +1,6 @@
-"""Прозрачный оверлей: квадрат-контур персонажа + статус.
+"""透明浮窗：角色轮廓方框 + 状态。
 
-Квадрат обводит персонажа, сверху подпись AutoLoot_ON/OFF.
+方框勾勒角色位置，上方显示 AutoLoot_ON/OFF 标签。
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ except ImportError:
 
 
 class RadiusOverlay:
-    """Прозрачный оверлей: контур персонажа + статус."""
+    """透明浮窗：角色轮廓 + 状态。"""
 
     def __init__(self, stop_event, get_state_fn):
         self.stop_event = stop_event
@@ -110,10 +110,10 @@ class RadiusOverlay:
         f = tkfont.Font(family="Consolas", size=13, weight="bold")
 
         if active:
-            label = "AutoLoot ON"
+            label = "自动拾取 开"
             label_color = "#00ff88"
         else:
-            label = "AutoLoot OFF"
+            label = "自动拾取 关"
             label_color = "#ff4444"
 
         self._canvas.create_text(

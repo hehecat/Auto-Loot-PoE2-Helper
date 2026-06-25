@@ -1,4 +1,4 @@
-# Профиль "mapping" — зачистка карт: большой радиус, режим hold.
+# 刷图配置：大范围拾取
 loot:
   pickup_radius_px: 600
   mode: toggle

@@ -1,6 +1,6 @@
-# Профиль "bossing" — босс: только валюта, малый радиус, клик по нажатию (single).
+# 打 BOSS 配置：仅拾取通货，小范围，按一下拾一个
 loot:
   pickup_radius_px: 300
   mode: single
 filter:
-  categories: [currency]   # влияет на патч фильтра (перепатчить после смены)
+  categories: [currency]   # 仅影响过滤器补丁（切换后需重新打补丁）

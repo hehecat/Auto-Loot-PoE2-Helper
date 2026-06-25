@@ -1,114 +1,114 @@
-# Auto Loot PoE Helper — базовый конфиг (можно переопределить профилем)
+# Auto Loot PoE2 助手 — 基础配置（可被配置文件覆盖）
 
 game:
   window_title: "Path of Exile 2"
-  monitor: 0            # индекс монитора (0 = основной; -1 = определить по окну)
+  monitor: 0            # 显示器编号（0 = 主显示器; -1 = 根据窗口自动确定）
 
 capture:
-  backend: dxcam        # dxcam | mss (dxcam быстрее; при сбое авто-фолбэк на mss)
+  backend: dxcam        # dxcam | mss（dxcam 更快；出错时自动回退到 mss）
   target_fps: 30
-  double_buffer: true   # фоновый захват кадров (сглаживает тайминг)
+  double_buffer: true   # 后台缓冲捕获（平滑帧率）
 
 filter:
-  path: "C:/Users/OLD/Documents/My Games/Path of Exile 2/Vladislav Yoshi Perfection.filter"
-  marker_rgb: [255, 0, 200]    # fallback-цвет маркера (для категорий без своего цвета)
-  extra_colors: []              # доп. цвета для детекции (R, G, B)
-  category_colors:              # все категории — один безопасный розовый (нет в окружении PoE2)
+  path: "C:/Users/hehecat/Documents/My Games/Path of Exile 2/[5]速刷后期[lv96-100]-一乐过滤.filter"
+  marker_rgb: [255, 0, 200]    # 备用标记颜色（未在下方单独指定颜色的分类使用）
+  extra_colors: []              # 额外检测颜色 (R, G, B)
+  category_colors:              # 使用过滤器原生颜色，无需打补丁
     currency:  [255, 0, 200]
     fragments: [255, 0, 200]
     waystones: [255, 0, 200]
     gems:      [255, 0, 200]
-  categories:                   # какие категории авто-собирать
+  categories:                   # 自动拾取分类
     - currency
     - fragments
     - waystones
     - gems
 
 vision:
-  min_blob_area: 120    # мин. площадь пятна маркера в пикселях (одна подпись большая)
-  hue_tolerance: 8      # допуск по тону вокруг marker_rgb (HSV, 0..179)
-  sat_min: 120          # мин. насыщенность
-  val_min: 120          # мин. яркость
-  close_px: 3           # лёгкая склейка (плотные подписи; большая склеивает соседние)
-  auto_calibrate: false # авто-определение цветов фильтра при старте
+  min_blob_area: 120    # 标记最小像素面积（一个标签的大小）
+  hue_tolerance: 8      # 色相容差（HSV, 0..179）
+  sat_min: 120          # 最低饱和度
+  val_min: 120          # 最低亮度
+  close_px: 3           # 轻微合并间距（密集标签合并；过大可能合并相邻标签）
+  auto_calibrate: false # 启动时自动识别过滤器颜色
 
 loot:
-  pickup_radius_px: 250  # только близкий лут (большой радиус -> беготня к дальнему)
-  lazy_radius_px: 80     # радиус подбора вокруг КУРСОРА в режиме lazy
-  roi_margin_px: 100     # допуск вокруг радиуса для захвата ROI (захват чуть больше радиуса)
-  click_cooldown_ms: 100 # пауза между кликами (мало -> мельтешение, не успевает поднять)
-  dedup_ms: 2500         # 0 = прилипание к ближайшей цели; >0 = не кликать ту же точку N мс
-  dedup_px: 24           # допуск расстояния для анти-дабл-клика (пиксели)
-  stuck_timeout_s: 5.0   # анти-стак: пропустить цель если кликаем по ней дольше N секунд
+  pickup_radius_px: 250  # 拾取半径（仅近距离拾取；太大可能满地跑）
+  lazy_radius_px: 80     # lazy 模式下鼠标周围拾取半径
+  roi_margin_px: 100     # 区域截取边界（略大于拾取半径）
+  click_cooldown_ms: 100 # 点击间隔（太短可能来不及拾取）
+  dedup_ms: 2500         # 0 = 死磕最近目标；>0 = N 毫秒内不重复点击同一位置
+  dedup_px: 24           # 防重复点击的距离容差（像素）
+  stuck_timeout_s: 5.0   # 防卡住：点击同一目标超过 N 秒则跳过
   randomize_delay_ms: [5, 15]
-  human_mouse: true         # плавное движение по кривой Безье (выглядит как рука человека)
-  mode: toggle          # hold | toggle | single | lazy (toggle: F8 вкл/выкл, ничего не держать)
-  category_priority:    # порядок подбора (меньше = важнее; сначала валюта, потом остальное)
+  human_mouse: true          # 贝塞尔曲线平滑移动（模拟人手操作）
+  mode: toggle           # hold | toggle | single | lazy（toggle: F8 开关，无需按住）
+  category_priority:     # 拾取优先级（数值越小越优先；通货 > 碎片 > 宝石 > 路标石）
     currency: 1
     fragments: 2
     gems: 3
     waystones: 4
-  center_offset_xy: [0, -40]  # центр персонажа относительно центра кадра
+  center_offset_xy: [0, -40]  # 角色中心相对于画面中心的偏移
 
 hotkeys:
-  toggle: "f8"        # мастер вкл/выкл (toggle-режим подбора + авто-автоматика)
+  toggle: "f8"        # 总开关（toggle 模式 + 自动化）
   pickup: "space"
-  profile: "f7"       # циклическое переключение профилей на лету
-  reload: "f5"        # перезагрузить конфиг
-  settings: "f6"      # открыть GUI настроек
+  profile: "f7"       # 循环切换配置文件
+  reload: "f5"        # 重载配置文件
+  settings: "f6"      # 打开设置界面
   calibrate: "f9"
   quit: "f12"
-  category_hotkeys:   # клавиши для быстрого включения/выключения категорий
-    currency: "1"     # зажми 1 = подбирать только валюту
-    fragments: "2"    # зажми 2 = подбирать только фрагменты
-    gems: "3"         # зажми 3 = подбирать только гемы
-    waystones: "4"    # зажми 4 = подбирать только вейстоуны
+  category_hotkeys:   # 按住指定键临时切换分类
+    currency: "1"     # 按住 1 = 只捡通货
+    fragments: "2"    # 按住 2 = 只捡碎片
+    gems: "3"         # 按住 3 = 只捡宝石
+    waystones: "4"    # 按住 4 = 只捡路标石
 
 profiles:
-  start: null         # имя профиля при старте (без .yaml); null = default
+  start: null         # 启动时使用的配置（不含 .yaml）；null = 使用基础配置
 
-hp_flask:             # авто-фласка ХП при просадке жизней
-  enabled: true       # включить: true
-  key: "1"            # клавиша фласки жизни (для клавиатуры)
-  input_method: gamepad  # keyboard | gamepad (если gamepad = L2 для HP)
-  threshold: 0.65     # нажать когда ХП < 65%
-  cooldown_ms: 4500   # пауза между нажатиями (не спамить)
-  sound: true         # звуковой сигнал при нажатии фласки
-  hp_region:          # регион орба ХП (доли от размера окна, 0..1)
-    x: 0.01           # левый край
-    y: 0.84           # верхний край
-    w: 0.10           # ширина
-    h: 0.15           # высота
+hp_flask:             # 自动生命药剂（血量低时自动喝药）
+  enabled: true       # 是否启用
+  key: "1"            # 药水快捷键（键盘模式）
+  input_method: gamepad  # keyboard | gamepad（gamepad 模式下使用 L2 喝血）
+  threshold: 0.65     # HP 低于 65% 时触发
+  cooldown_ms: 4500   # 按下冷却时间（防止连按）
+  sound: true         # 喝药时播放声音提示
+  hp_region:          # HP 球区域（以窗口大小的比例表示，0..1）
+    x: 0.01           # 左边距
+    y: 0.84           # 上边距
+    w: 0.10           # 宽度
+    h: 0.15           # 高度
 
-automation:           # авто-фласки/скиллы по таймеру (по умолчанию ВЫКЛ)
+automation:           # 定时自动技能/药水（默认关闭）
   enabled: false
   only_when_foreground: true
   actions:
     - {name: life_flask, key: "1", interval_ms: 5000, enabled: true}
     - {name: mana_flask, key: "2", interval_ms: 6000, enabled: true}
 
-loot_eval:            # оценка лута (правила или LLM)
-  llm_enabled: false  # включить LLM-оценку (требует API ключ)
-  llm_api_key: null   # OpenAI API ключ (или совместимый)
-  llm_model: "gpt-4o-mini"  # модель для оценки
-  llm_base_url: null  # кастомный base_url (для совместимых API)
+loot_eval:            # 物品评估器（规则或 LLM）
+  llm_enabled: false  # 启用 LLM 评估（需要 API 密钥）
+  llm_api_key: null   # OpenAI API 密钥（或兼容 API）
+  llm_model: "gpt-4o-mini"  # 评估模型
+  llm_base_url: null  # 自定义 base_url（兼容第三方 API）
 
-telegram:             # уведомления о редких дропах
+telegram:             # 稀有掉落 Telegram 通知
   enabled: false
-  bot_token: null     # токен Telegram бота (от @BotFather)
-  chat_id: null       # ID чата для уведомлений
+  bot_token: null     # Telegram Bot token（从 @BotFather 获取）
+  chat_id: null       # 通知发送的聊天 ID
 
 overlay:
   enabled: true
   show_radius: true
   poll_ms: 120
-  tray_icon: true          # системный трей-икон (требуется pystray + Pillow)
+  tray_icon: true          # 系统托盘图标（需要 pystray + Pillow）
 
 logging:
   level: INFO
-  csv_pickup: true        # логировать каждый подбор в CSV (_debug/pickup_log_*.csv)
+  csv_pickup: true        # 每次拾取记录到 CSV（_debug/pickup_log_*.csv）
 
-gamepad:              # эмуляция джойстика (требуется vgamepad)
-  enabled: true       # включить виртуальный Xbox контроллер
-  hp_button: "L2"     # кнопка HP фласки
-  pickup_button: "X"  # кнопка подбора лута
+gamepad:              # 手柄模拟（需要 vgamepad）
+  enabled: true       # 启用虚拟 Xbox 手柄
+  hp_button: "L2"     # HP 药水按钮
+  pickup_button: "X"  # 拾取按钮

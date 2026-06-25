@@ -1,8 +1,8 @@
-"""Логика подбора: клик по ближайшей цели в радиусе с кулдауном.
+"""拾取逻辑：在半径范围内点击最近的目标，并有冷却时间。
 
-dedup_ms=0 (по умолчанию) => «прилипание»: программа долбит по ближайшей цели,
-пока персонаж до неё не дойдёт и не поднимет (иначе перс мечется между предметами).
-dedup_ms>0 включает анти-дабл-клик (не кликать недавно кликнутую точку).
+dedup_ms=0（默认）=>「粘滞」模式：程序持续点击最近的目标，直到角色走到并拾取
+（否则角色会在物品之间来回跑）。
+dedup_ms>0 启用防双击（不点击刚点击过的位置）。
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from ..input.mouse import Mouse
 
 
 class LootEngine:
-    """Движок подбора лута: приоритеты, анти-дабл-клик, anti-stuck, ROI."""
+    """战利品拾取引擎：优先级、防双击、防卡住、ROI。"""
 
     def __init__(
         self,
@@ -47,12 +47,12 @@ class LootEngine:
         self.gamepad = gamepad
 
     def center(self, frame_shape: Tuple[int, ...]) -> Tuple[int, int]:
-        """Центр персонажа в координатах кадра."""
+        """角色在帧坐标中的中心位置。"""
         h, w = frame_shape[:2]
         return (w // 2 + self.center_offset[0], h // 2 + self.center_offset[1])
 
     def get_roi(self, frame_shape: Tuple[int, ...]) -> Optional[Tuple[int, int, int, int]]:
-        """Возвращает (x1, y1, x2, y2) ROI вокруг персонажа или None."""
+        """返回角色周围的 ROI (x1, y1, x2, y2) 或 None。"""
         h, w = frame_shape[:2]
         cx, cy = self.center(frame_shape)
         r = self.radius + self.roi_margin
@@ -76,7 +76,7 @@ class LootEngine:
     def targets_in_radius(
         self, points: List[Tuple[int, int, float]], frame_shape: Tuple[int, ...]
     ) -> List[Tuple[int, int, float]]:
-        """Отфильтровать цели в радиусе подбора."""
+        """筛选拾取半径内的目标。"""
         c = self.center(frame_shape)
         return [p for p in points if self._in_radius(p, c)]
 
@@ -86,7 +86,7 @@ class LootEngine:
         frame_shape: Tuple[int, ...],
         priorities: Optional[Dict[Tuple[int, int], int]] = None,
     ) -> Optional[Tuple[int, int]]:
-        """Кликнуть по наиболее приоритетной цели в радиусе подбора."""
+        """点击拾取半径内优先级最高的目标。"""
         return self.pick_at(points, self.center(frame_shape), self.radius, priorities)
 
     def pick_at(
@@ -96,11 +96,11 @@ class LootEngine:
         radius: int,
         priorities: Optional[Dict[Tuple[int, int], int]] = None,
     ) -> Optional[Tuple[int, int]]:
-        """Кликнуть по наиболее приоритетной цели в пределах radius.
+        """在 radius 范围内点击优先级最高的目标。
 
-        ref и points — в координатах кадра.
-        priorities — dict {(cx, cy): int}, меньше = важнее. None = сортировка по дистанции.
-        Возвращает (tx, ty) если кликнули, иначе None.
+        ref 和 points — 使用帧坐标。
+        priorities — dict {(cx, cy): int}，越小越重要。None = 按距离排序。
+        如果点击了则返回 (tx, ty)，否则返回 None。
         """
         now = time.perf_counter()
         if now - self._last_click_t < self.cooldown:
@@ -128,7 +128,7 @@ class LootEngine:
             if now - self._stuck_start > self._stuck_timeout:
                 self._recent.append((tx, ty, now))
                 self._stuck_target = None
-                self.log.debug("Anti-stuck: пропускаю цель (%d,%d) — застряла >%.0fs",
+                self.log.debug("防卡住: 跳过目标 (%d,%d) — 卡住超过 %.0f 秒",
                                tx, ty, self._stuck_timeout)
                 return None
         else:

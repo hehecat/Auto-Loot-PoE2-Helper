@@ -1,7 +1,7 @@
-"""Мост DualSense -> Virtual Xbox.
+"""DualSense -> 虚拟 Xbox 桥接。
 
-Читает DualSense через pygame, перенаправляет в виртуальный Xbox.
-Маппинг кнопок настраивается через DS4Windows.
+通过 pygame 读取 DualSense，重定向到虚拟 Xbox。
+按键映射通过 DS4Windows 配置。
 """
 import logging
 

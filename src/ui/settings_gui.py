@@ -1,7 +1,7 @@
-"""GUI окно настроек с трекбарами и чекбоксами (tkinter).
+"""GUI 设置窗口，包含滑块和复选框（tkinter）。
 
-Открывается по хоткею или из трея. Позволяет менять параметры на лету
-без ручного редактирования YAML. Сохраняет в текущий профиль.
+通过快捷键或托盘打开。允许即时更改参数，
+无需手动编辑 YAML。保存到当前配置文件。
 """
 import tkinter as tk
 from tkinter import ttk
@@ -20,13 +20,13 @@ class SettingsGUI:
         self._profile_path = None
 
     def open(self, current_cfg=None):
-        """Открыть окно настроек."""
+        """打开设置窗口。"""
         if self.root and self.root.winfo_exists():
             self.root.lift()
             return
 
         self.root = tk.Tk()
-        self.root.title("Auto Loot — Настройки")
+        self.root.title("自动拾取 — 设置")
         self.root.geometry("420x680")
         self.root.resizable(False, True)
 
@@ -44,8 +44,8 @@ class SettingsGUI:
 
         row = 0
 
-        # --- Захват ---
-        ttk.Label(frame, text="=== Захват ===", font=("Consolas", 10, "bold")).grid(
+        # --- 画面捕获 ---
+        ttk.Label(frame, text="=== 画面捕获 ===", font=("Consolas", 10, "bold")).grid(
             row=row, column=0, columnspan=3, sticky="w", padx=5, pady=(10, 2))
         row += 1
 
@@ -56,8 +56,8 @@ class SettingsGUI:
         row = self._add_check(frame, row, "Double Buffer", "capture.double_buffer",
                               cfg.get("capture", {}).get("double_buffer", False))
 
-        # --- Видение ---
-        ttk.Label(frame, text="=== Видение ===", font=("Consolas", 10, "bold")).grid(
+        # --- 视觉识别 ---
+        ttk.Label(frame, text="=== 视觉识别 ===", font=("Consolas", 10, "bold")).grid(
             row=row, column=0, columnspan=3, sticky="w", padx=5, pady=(10, 2))
         row += 1
 
@@ -72,8 +72,8 @@ class SettingsGUI:
         row = self._add_spin(frame, row, "Close Px", "vision.close_px",
                              cfg.get("vision", {}).get("close_px", 3), 0, 30)
 
-        # --- Подбор ---
-        ttk.Label(frame, text="=== Подбор ===", font=("Consolas", 10, "bold")).grid(
+        # --- 拾取 ---
+        ttk.Label(frame, text="=== 拾取 ===", font=("Consolas", 10, "bold")).grid(
             row=row, column=0, columnspan=3, sticky="w", padx=5, pady=(10, 2))
         row += 1
 
@@ -105,8 +105,8 @@ class SettingsGUI:
         row = self._add_check(frame, row, "Sound", "hp_flask.sound",
                               hp.get("sound", True))
 
-        # --- Оверлей ---
-        ttk.Label(frame, text="=== Оверлей ===", font=("Consolas", 10, "bold")).grid(
+        # --- 浮窗 ---
+        ttk.Label(frame, text="=== 浮窗 ===", font=("Consolas", 10, "bold")).grid(
             row=row, column=0, columnspan=3, sticky="w", padx=5, pady=(10, 2))
         row += 1
 
@@ -116,13 +116,13 @@ class SettingsGUI:
         row = self._add_check(frame, row, "Tray Icon", "overlay.tray_icon",
                               ov.get("tray_icon", True))
 
-        # --- Кнопки ---
+        # --- 按钮 ---
         btn_frame = ttk.Frame(frame)
         btn_frame.grid(row=row, column=0, columnspan=3, pady=15)
 
-        ttk.Button(btn_frame, text="Применить", command=self._apply).pack(side="left", padx=5)
-        ttk.Button(btn_frame, text="Сохранить в профиль", command=self._save_profile).pack(side="left", padx=5)
-        ttk.Button(btn_frame, text="Закрыть", command=self.root.destroy).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="应用", command=self._apply).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="保存到配置", command=self._save_profile).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="关闭", command=self.root.destroy).pack(side="left", padx=5)
 
         canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(-1 * (e.delta // 120), "units"))
 
@@ -159,7 +159,7 @@ class SettingsGUI:
         return row + 1
 
     def _collect(self):
-        """Собрать значения из GUI в dict конфига."""
+        """从 GUI 收集值到配置字典。"""
         cfg = {}
         for key, var in self._values.items():
             parts = key.split(".")
@@ -193,9 +193,9 @@ class SettingsGUI:
             initialdir=str(PROFILES_DIR),
             defaultextension=".yaml",
             filetypes=[("YAML", "*.yaml")],
-            title="Сохранить профиль"
+            title="保存配置"
         )
         if path:
             with open(path, "w", encoding="utf-8") as f:
-                f.write("# Сгенерировано GUI настроек\n")
+                f.write("# 由设置界面生成\n")
                 yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False)

@@ -1,6 +1,6 @@
-"""Хелперы для разбора строковых хоткеев из конфига в объекты pynput и их сравнения.
+"""辅助工具：将配置中的字符串快捷键解析为 pynput 对象并进行比较。
 
-Поддержка комбинаций: "ctrl+space", "alt+f8", "shift+q" и т.д.
+支持组合键："ctrl+space"、"alt+f8"、"shift+q" 等。
 """
 from pynput import keyboard
 
@@ -18,7 +18,7 @@ def parse_key(spec):
 
 
 def _is_modifier(key):
-    """True если клавиша — модификатор (ctrl, alt, shift, win)."""
+    """如果按键是修饰键（ctrl、alt、shift、win）则返回 True。"""
     return key in (
         keyboard.Key.ctrl_l, keyboard.Key.ctrl_r,
         keyboard.Key.alt_l, keyboard.Key.alt_r,
@@ -28,7 +28,7 @@ def _is_modifier(key):
 
 
 class ComboTracker:
-    """Отслеживает зажатые модификаторы для проверки комбинаций."""
+    """跟踪按下的修饰键以验证组合键。"""
 
     def __init__(self):
         self._pressed = set()
@@ -40,14 +40,14 @@ class ComboTracker:
         self._pressed.discard(key)
 
     def check(self, combo):
-        """Проверить, что все клавиши комбинации зажаты одновременно."""
+        """检查组合键中的所有按键是否同时按下。"""
         if not isinstance(combo, tuple):
             return False
         return all(k in self._pressed for k in combo)
 
 
 def key_matches(event_key, target):
-    """Совпадает ли клавиша из listener (Key/KeyCode) с распарсенным target."""
+    """检查 listener 中的按键（Key/KeyCode）是否与解析后的 target 匹配。"""
     if isinstance(target, tuple):
         return False
     if isinstance(target, keyboard.Key):

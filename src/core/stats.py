@@ -1,7 +1,6 @@
-"""Сбор и отображение статистики подбора за сессию.
+"""收集并显示会话期间的拾取统计数据。
 
-Собирает данные о каждом подборе, считает итоги и выводит дашборд
-в консоль или в файл.
+收集每次拾取的数据，计算汇总并输出仪表盘到控制台或文件。
 """
 import csv
 import time
@@ -12,7 +11,7 @@ _DEBUG_DIR = Path(__file__).resolve().parents[2] / "_debug"
 
 
 class SessionStats:
-    """Статистика текущей сессии."""
+    """当前会话的统计信息。"""
 
     def __init__(self):
         self.start_time = time.time()
@@ -22,7 +21,7 @@ class SessionStats:
         self.total = 0
 
     def record(self, category, x=0, y=0):
-        """Записать подбор."""
+        """记录一次拾取。"""
         now = time.time()
         self.picks.append((now, category, x, y))
         self.by_category[category] += 1
@@ -32,25 +31,25 @@ class SessionStats:
 
     @property
     def elapsed(self):
-        """Прошедшее время в секундах."""
+        """已用时间（秒）。"""
         return time.time() - self.start_time
 
     @property
     def picks_per_minute(self):
-        """Средняя скорость подбора (предметов в минуту)."""
+        """平均拾取速度（每分钟物品数）。"""
         minutes = self.elapsed / 60
         if minutes < 0.1:
             return 0
         return self.total / minutes
 
     def summary(self):
-        """Краткая сводка."""
+        """简要汇总。"""
         lines = [
-            f"=== Сессия: {self._fmt_time(self.elapsed)} ===",
-            f"Всего подобрано: {self.total}",
-            f"Скорость: {self.picks_per_minute:.1f} предм/мин",
+            f"=== 会话: {self._fmt_time(self.elapsed)} ===",
+            f"总计拾取: {self.total}",
+            f"速度: {self.picks_per_minute:.1f} 件/分钟",
             "",
-            "По категориям:",
+            "按分类:",
         ]
         for cat, count in sorted(self.by_category.items(), key=lambda x: -x[1]):
             pct = count / self.total * 100 if self.total else 0
@@ -58,7 +57,7 @@ class SessionStats:
         return "\n".join(lines)
 
     def save_csv(self, path=None):
-        """Сохранить детальный лог в CSV."""
+        """将详细日志保存为 CSV。"""
         if path is None:
             _DEBUG_DIR.mkdir(parents=True, exist_ok=True)
             date_str = time.strftime("%Y%m%d_%H%M%S")
@@ -80,14 +79,14 @@ class SessionStats:
         m = int((seconds % 3600) // 60)
         s = int(seconds % 60)
         if h > 0:
-            return f"{h}ч {m}мин {s}сек"
+            return f"{h}时{m}分{s}秒"
         elif m > 0:
-            return f"{m}мин {s}сек"
-        return f"{s}сек"
+            return f"{m}分{s}秒"
+        return f"{s}秒"
 
 
 class StatsCollector:
-    """Глобальный сборщик статистики (синглтон)."""
+    """全局统计收集器（单例）。"""
     _instance = None
 
     def __new__(cls):
@@ -110,8 +109,8 @@ class StatsCollector:
         self.session.record(category, x, y)
 
     def end_session(self):
-        """Завершить сессию и сохранить CSV."""
+        """结束会话并保存 CSV。"""
         if self._session and self._session.total > 0:
             path = self._session.save_csv()
             return self._session.summary(), path
-        return "Нет данных за сессию.", None
+        return "会话无数据。", None

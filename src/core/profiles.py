@@ -1,7 +1,7 @@
-"""Менеджер профилей: обнаружение config/profiles/*.yaml и загрузка слитого конфига.
+"""配置管理器：发现 config/profiles/*.yaml 并加载合并后的配置。
 
-Профиль 'default' = базовый config/default.yaml без переопределений.
-Остальные профили — файлы config/profiles/<name>.yaml (мерджатся поверх default).
+配置文件 'default' = 基础的 config/default.yaml，无覆盖。
+其他配置文件 — config/profiles/<name>.yaml 文件（合并到 default 之上）。
 """
 import os
 from pathlib import Path
@@ -32,7 +32,7 @@ class ProfileManager:
         return self.current()
 
     def load(self, name):
-        """Слитый конфиг для профиля по имени."""
+        """按名称获取配置文件合并后的配置。"""
         if name == "default":
             return load_config(None)
         path = self.dir / f"{name}.yaml"

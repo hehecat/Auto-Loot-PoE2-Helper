@@ -1,13 +1,13 @@
-"""CLI менеджер Auto Loot PoE2 Helper.
+"""Auto Loot PoE2 Helper CLI 管理器。
 
-Управление через командную строку:
-    python -m src.cli stats          # показать статистику за сегодня
-    python -m src.cli profiles       # список профилей
-    python -m src.cli patch          # патчить фильтр
-    python -m src.cli unpatch        # откатить фильтр
-    python -m src.cli check          # проверить статус патча
-    python -m src.cli calibrate      # запустить калибровку
-    python -m src.cli validate       # валидировать конфиг
+通过命令行管理：
+    python -m src.cli stats          # 显示今日统计数据
+    python -m src.cli profiles       # 配置文件列表
+    python -m src.cli patch          # 应用过滤器补丁
+    python -m src.cli unpatch        # 撤销过滤器补丁
+    python -m src.cli check          # 检查补丁状态
+    python -m src.cli calibrate      # 启动校准
+    python -m src.cli validate       # 验证配置
 """
 import argparse
 import sys
@@ -17,28 +17,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def cmd_stats(args):
-    """Показать статистику."""
+    """显示统计数据。"""
     from pathlib import Path
     import csv
 
     debug_dir = Path("_debug")
     if not debug_dir.exists():
-        print("Нет данных. Запусти хотя бы одну сессию.")
+        print("没有数据。请至少运行一次会话。")
         return
 
     csv_files = sorted(debug_dir.glob("session_*.csv"), reverse=True)
     if not csv_files:
-        print("Нет CSV-файлов сессий.")
+        print("没有会话 CSV 文件。")
         return
 
     target = csv_files[0] if args.last else None
     if args.date:
         target = debug_dir / f"session_{args.date}.csv"
         if not target.exists():
-            print(f"Файл для даты {args.date} не найден.")
+            print(f"日期 {args.date} 的文件未找到。")
             return
 
-    print(f"Файл: {target.name}")
+    print(f"文件: {target.name}")
     print()
 
     total = 0
@@ -50,7 +50,7 @@ def cmd_stats(args):
             cat = row.get("category", "?")
             by_cat[cat] = by_cat.get(cat, 0) + 1
 
-    print(f"Всего подобрано: {total}")
+    print(f"总计拾取: {total}")
     print()
     for cat, count in sorted(by_cat.items(), key=lambda x: -x[1]):
         pct = count / total * 100 if total else 0
@@ -58,18 +58,18 @@ def cmd_stats(args):
 
 
 def cmd_profiles(args):
-    """Список профилей."""
+    """列出配置文件。"""
     from src.core.profiles import ProfileManager
 
     pm = ProfileManager()
-    print("Доступные профили:")
+    print("可用配置:")
     for name in pm.names:
-        marker = " <-- текущий" if name == pm.current() else ""
+        marker = " <-- 当前" if name == pm.current() else ""
         print(f"  {name}{marker}")
 
 
 def cmd_patch(args):
-    """Патчить фильтр."""
+    """修补过滤器。"""
     from src.config_manager import load_config
     from src.core.filter_patcher import patch
     from src.logger import get_logger
@@ -79,16 +79,16 @@ def cmd_patch(args):
     from pathlib import Path
     path = Path(cfg["filter"]["path"])
     if not path.exists():
-        print(f"Файл фильтра не найден: {path}")
+        print(f"过滤器文件未找到: {path}")
         return
     ok = patch(path, cfg["filter"]["marker_rgb"],
                cfg["filter"]["categories"], log,
                cfg["filter"].get("category_colors"))
-    print("OK" if ok else "ОШИБКА")
+    print("成功" if ok else "失败")
 
 
 def cmd_unpatch(args):
-    """Откатить фильтр."""
+    """回滚过滤器。"""
     from src.config_manager import load_config
     from src.core.filter_patcher import unpatch
     from src.logger import get_logger
@@ -101,7 +101,7 @@ def cmd_unpatch(args):
 
 
 def cmd_check(args):
-    """Проверить статус патча."""
+    """检查补丁状态。"""
     from src.config_manager import load_config
     from src.core.filter_patcher import check
     from src.logger import get_logger
@@ -111,58 +111,58 @@ def cmd_check(args):
     from pathlib import Path
     path = Path(cfg["filter"]["path"])
     if not path.exists():
-        print(f"Файл фильтра не найден: {path}")
+        print(f"过滤器文件未找到: {path}")
         return
     check(path, cfg["filter"]["marker_rgb"], log)
 
 
 def cmd_validate(args):
-    """Валидировать конфиг."""
+    """验证配置。"""
     from src.config_manager import load_config
     from src.config_validator import validate
 
     cfg = load_config(args.config)
     warnings = validate(cfg)
     if warnings:
-        print("Предупреждения:")
+        print("警告:")
         for w in warnings:
             print(f"  - {w}")
     else:
-        print("Конфиг валиден.")
+        print("配置有效。")
 
 
 def cmd_gui(args):
-    """Запустить GUI."""
+    """启动 GUI。"""
     from src.ui.app import run_gui
     run_gui()
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Auto Loot PoE2 Helper — CLI менеджер",
+        description="自动拾取 PoE2 助手 — CLI 管理工具",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="command")
 
-    p_stats = sub.add_parser("stats", help="статистика за сегодня")
-    p_stats.add_argument("--last", action="store_true", help="последняя сессия")
-    p_stats.add_argument("--date", help="конкретная дата (YYYYMMDD)")
+    p_stats = sub.add_parser("stats", help="今日统计")
+    p_stats.add_argument("--last", action="store_true", help="最近一次会话")
+    p_stats.add_argument("--date", help="指定日期 (YYYYMMDD)")
 
-    sub.add_parser("profiles", help="список профилей")
+    sub.add_parser("profiles", help="配置列表")
 
-    p_patch = sub.add_parser("patch", help="патчить фильтр")
-    p_patch.add_argument("--config", help="путь к конфигу")
+    p_patch = sub.add_parser("patch", help="给过滤器打补丁")
+    p_patch.add_argument("--config", help="配置文件路径")
 
-    p_unpatch = sub.add_parser("unpatch", help="откатить фильтр")
-    p_unpatch.add_argument("--config", help="путь к конфигу")
+    p_unpatch = sub.add_parser("unpatch", help="回滚过滤器")
+    p_unpatch.add_argument("--config", help="配置文件路径")
 
-    p_check = sub.add_parser("check", help="проверить статус патча")
-    p_check.add_argument("--config", help="путь к конфигу")
+    p_check = sub.add_parser("check", help="检查补丁状态")
+    p_check.add_argument("--config", help="配置文件路径")
 
-    p_validate = sub.add_parser("validate", help="валидировать конфиг")
-    p_validate.add_argument("--config", help="путь к конфигу")
+    p_validate = sub.add_parser("validate", help="验证配置")
+    p_validate.add_argument("--config", help="配置文件路径")
 
-    sub.add_parser("gui", help="запустить GUI")
+    sub.add_parser("gui", help="启动 GUI")
 
     args = parser.parse_args()
 

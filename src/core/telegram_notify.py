@@ -1,7 +1,7 @@
-"""Telegram уведомления: отправка сообщений о редких дропах.
+"""Telegram 通知：发送稀有掉落消息。
 
-Использует Telegram Bot API. Требует bot_token и chat_id в конфиге.
-Отправляются уведомления о ценных предметах (валюта, фрагменты, уникалы).
+使用 Telegram Bot API。需要在配置中设置 bot_token 和 chat_id。
+发送贵重物品通知（货币、碎片、传奇物品）。
 """
 import logging
 import time
@@ -11,28 +11,28 @@ from urllib.error import URLError
 
 _log = logging.getLogger("autoloot.telegram")
 
-# Категории, о которых уведомлять
+# 需要通知的类别
 NOTIFY_CATEGORIES = {"currency", "fragments", "uniques"}
 
-# Минимальный приоритет для уведомления (1=всегда, 2=обычно, 3=опц.)
+# 通知的最小优先级（1=总是、2=通常、3=可选）
 NOTIFY_PRIORITY_THRESHOLD = 2
 
 
 class TelegramNotifier:
-    """Отправка уведомлений в Telegram."""
+    """发送 Telegram 通知。"""
 
     def __init__(self, bot_token=None, chat_id=None, enabled=True):
         self.bot_token = bot_token
         self.chat_id = chat_id
         self.enabled = enabled and bot_token and chat_id
         self._last_send = 0
-        self._cooldown = 2.0  # минимум между сообщениями
+        self._cooldown = 2.0  # 消息之间最小间隔
 
         if self.enabled:
-            _log.info("Telegram: уведомления включены (chat_id=%s)", chat_id)
+            _log.info("Telegram: 通知已开启 (chat_id=%s)", chat_id)
 
     def notify(self, category, item_name="", x=0, y=0, priority=2):
-        """Отправить уведомление о подборе."""
+        """发送拾取通知。"""
         if not self.enabled:
             return
 
@@ -61,7 +61,7 @@ class TelegramNotifier:
         self._last_send = now
 
     def _send(self, text):
-        """Отправить сообщение через Telegram Bot API."""
+        """通过 Telegram Bot API 发送消息。"""
         try:
             url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
             data = urlencode({
@@ -73,18 +73,18 @@ class TelegramNotifier:
             req = Request(url, data=data, method="POST")
             with urlopen(req, timeout=5) as resp:
                 if resp.status == 200:
-                    _log.debug("Telegram: отправлено '%s'", text[:50])
+                    _log.debug("Telegram: 已发送 '%s'", text[:50])
                 else:
-                    _log.warning("Telegram: ошибка %s", resp.status)
+                    _log.warning("Telegram: 错误 %s", resp.status)
         except URLError as e:
-            _log.debug("Telegram: сеть недоступна (%s)", e)
+            _log.debug("Telegram: 网络不可用 (%s)", e)
         except Exception as e:
-            _log.debug("Telegram: ошибка отправки: %s", e)
+            _log.debug("Telegram: 发送失败: %s", e)
 
     def test_connection(self):
-        """Проверить соединение с Telegram."""
+        """检查 Telegram 连接。"""
         if not self.enabled:
-            return False, "Уведомления отключены"
+            return False, "通知已禁用"
         try:
             url = f"https://api.telegram.org/bot{self.bot_token}/getMe"
             with urlopen(url, timeout=5) as resp:

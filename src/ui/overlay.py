@@ -1,13 +1,13 @@
-"""Прозрачный оверлей со статусом поверх игры (tkinter + win32).
+"""透明状态浮窗，显示在游戏上方（tkinter + win32）。
 
-GUI обязан жить в главном потоке. Цикл захвата запускается отдельным потоком,
-а оверлей читает статус через переданный snapshot-колбэк.
+GUI 必须在主线程中运行。捕获循环在独立线程中启动，
+浮窗通过传入的 snapshot 回调读取状态。
 
-Клик-сквозь по умолчанию. F10 — временно выключить click-through для drag.
+默认启用点击穿透。F10 — 临时禁用点击穿透以便拖拽。
 """
 import tkinter as tk
 
-TRANSPARENT_BG = "#010101"  # цвет-ключ прозрачности (Windows)
+TRANSPARENT_BG = "#010101"  # 透明色键 (Windows)
 
 
 class Overlay:
@@ -24,7 +24,7 @@ class Overlay:
 
     def run(self):
         self.root = tk.Tk()
-        self.root.title("AutoLoot Overlay")
+        self.root.title("自动拾取浮窗")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", 0.85)
@@ -67,7 +67,7 @@ class Overlay:
             )
             return hwnd
         except Exception:  # noqa: BLE001
-            return None  # без click-through оверлей всё равно показывается
+            return None  # 即使没有 click-through，浮窗仍然显示
 
     def _set_click_through(self, enabled):
         if not self._hwnd:
@@ -118,7 +118,7 @@ class Overlay:
                 ex | win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT | win32con.WS_EX_TOOLWINDOW,
             )
         except Exception:  # noqa: BLE001
-            pass  # без click-through оверлей всё равно показывается
+            pass  # 即使没有 click-through，浮窗仍然显示
 
     def _tick(self):
         if self.stop_event.is_set():
@@ -126,19 +126,19 @@ class Overlay:
             return
         s = self.snapshot_fn()
         active = s.get("active")
-        autom = "on" if s.get("automation") else "off"
-        master = "ON" if s.get("auto") else "off"
+        autom = "开" if s.get("automation") else "关"
+        master = "开" if s.get("auto") else "关"
         hp = s.get("hp")
         hp_str = f"  HP: {hp}%" if hp is not None else ""
         text = (
-            f"AUTO LOOT  [{'ON' if active else 'idle'}]\n"
-            f"mode    : {s.get('mode', '-')}\n"
-            f"profile : {s.get('profile', 'default')}\n"
-            f"targets : {s.get('targets', 0)}  (radius {s.get('in_radius', 0)})\n"
-            f"picked  : {s.get('picked', 0)}{hp_str}\n"
-            f"master  : {master}   automation: {autom}\n"
-            f"cat     : {s.get('active_cat', 'all')}\n"
-            f"quit    : {s.get('quit_key', 'F12')}  drag: F10/RMB"
+            f"自动拾取  [{'运行中' if active else '空闲'}]\n"
+            f"模式   : {s.get('mode', '-')}\n"
+            f"配置   : {s.get('profile', 'default')}\n"
+            f"目标   : {s.get('targets', 0)}  (半径 {s.get('in_radius', 0)})\n"
+            f"已拾取 : {s.get('picked', 0)}{hp_str}\n"
+            f"总开关 : {master}   自动化: {autom}\n"
+            f"分类   : {s.get('active_cat', 'all')}\n"
+            f"退出   : {s.get('quit_key', 'F12')}  拖动: F10/右键"
         )
         stats = s.get("stats", {})
         _labels = [("currency", "cur"), ("fragments", "frag"), ("gems", "gem"), ("waystones", "way")]
@@ -147,10 +147,10 @@ class Overlay:
             text += "\n" + "  ".join(stat_parts)
         session_stats = s.get("session_stats")
         if session_stats:
-            text += f"\nсессия: {session_stats}"
+            text += f"\n会话: {session_stats}"
         if not s.get("clicks_enabled", True):
-            text += "\n[!] окно PoE2 не найдено — клики off"
+            text += "\n[!] 未找到 PoE2 窗口 — 点击已关闭"
         elif not s.get("foreground", True):
-            text += "\n[~] PoE2 не активна — клики на паузе"
+            text += "\n[~] PoE2 未激活 — 点击已暂停"
         self.label.config(text=text, fg="#00ff88" if active else "#9fb3c8")
         self.root.after(self.poll_ms, self._tick)

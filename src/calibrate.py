@@ -1,14 +1,14 @@
-"""Интерактивный мастер калибровки.
+"""交互式校准向导。
 
-ЛКМ — задать основной цвет-маркер (берётся реальный RGB с экрана). Наведи курсор и нажми
-'a' — добавить ещё один цвет (несколько цветов). 'x' — очистить доп. цвета.
-Трекбары — допуск тона, мин. насыщенность/яркость, мин. площадь, радиус.
-Центр персонажа: Shift+ЛКМ или клавиши i/j/k/l. 's' — сохранить профиль, 'q' — выход.
+鼠标左键 — 设置主标记颜色（从屏幕获取真实 RGB）。移动光标并按
+'a' — 添加额外颜色（多个颜色）。'x' — 清除额外颜色。
+滑块 — 色调容差、最小饱和度/亮度、最小面积、半径。
+角色中心：Shift+鼠标左键 或 i/j/k/l 键。's' — 保存配置文件，'q' — 退出。
 
-Запуск:
-    python -m src.calibrate                 # из текущего default
-    python -m src.calibrate --profile X     # стартовые значения из профиля X
-    python -m src.calibrate --target name   # имя профиля для сохранения (по умолч. calibrated)
+运行：
+    python -m src.calibrate                 # 从当前默认配置
+    python -m src.calibrate --profile X     # 从配置文件 X 获取起始值
+    python -m src.calibrate --target name   # 保存的配置文件名称（默认 calibrated）
 """
 import argparse
 import json
@@ -29,7 +29,7 @@ from .vision.color_detector import ColorDetector, rgb_to_hsv_bounds
 WIN = "AutoLoot Calibrate"
 MASK = "mask"
 POS_FILE = Path(__file__).resolve().parents[1] / "config" / "_window_pos.json"
-# раскладка по умолчанию (первый запуск, пока нет сохранённых позиций): рядом на осн. мониторе
+# 默认布局（首次运行，尚无保存的位置）：在主显示器旁边
 DEFAULT_RECTS = {WIN: [40, 40, 1000, 640], MASK: [1060, 40, 660, 500]}
 
 
@@ -67,7 +67,7 @@ def _apply_window_rect(title, rect):
 
 
 def sample_rgb(frame_bgr, x, y):
-    """RGB пикселя кадра по координатам окна (с клампом в границы)."""
+    """根据窗口坐标获取帧像素的 RGB 值（钳制到边界内）。"""
     h, w = frame_bgr.shape[:2]
     x = max(0, min(w - 1, x))
     y = max(0, min(h - 1, y))
@@ -95,7 +95,7 @@ def save_calibration(path, colors, hue_tol, sat_min, val_min, min_area, radius, 
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        f.write("# Сгенерировано мастером калибровки (python -m src.calibrate)\n")
+        f.write("# 由校准向导生成 (python -m src.calibrate)\n")
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
     return data
 
@@ -107,9 +107,9 @@ def _initial_colors(cfg):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Auto Loot calibration wizard")
-    parser.add_argument("--profile", default=None, help="стартовый профиль")
-    parser.add_argument("--target", default="calibrated", help="имя профиля для сохранения")
+    parser = argparse.ArgumentParser(description="自动拾取校准向导")
+    parser.add_argument("--profile", default=None, help="启动配置")
+    parser.add_argument("--target", default="calibrated", help="保存配置名称")
     parser.add_argument("--config", default=None)
     args = parser.parse_args()
 
@@ -125,7 +125,7 @@ def main():
     win = GameWindow(cfg["game"]["window_title"])
     region = win.get_region() if win.find() else GameWindow.primary_region()
     cap = ScreenCapture(cfg["capture"]["backend"])
-    log.info("Калибровка: регион=%s, backend=%s", region, cap.backend)
+    log.info("校准: 区域=%s, backend=%s", region, cap.backend)
 
     v = cfg["vision"]
     loot = cfg["loot"]
@@ -146,10 +146,10 @@ def main():
         if flags & cv2.EVENT_FLAG_SHIFTKEY:
             h, w = frame.shape[:2]
             shared["center_off"] = [x - w // 2, y - h // 2]
-            log.info("Центр -> offset %s", shared["center_off"])
+            log.info("中心 -> 偏移 %s", shared["center_off"])
         else:
             shared["colors"][0] = sample_rgb(frame, x, y)
-            log.info("Основной цвет -> RGB %s", shared["colors"][0])
+            log.info("主色 -> RGB %s", shared["colors"][0])
 
     cv2.namedWindow(WIN, cv2.WINDOW_NORMAL)
     cv2.namedWindow(MASK, cv2.WINDOW_NORMAL)
@@ -163,7 +163,7 @@ def main():
     cv2.createTrackbar("Radius", WIN, int(loot.get("pickup_radius_px", 450)), 1500, noop)
 
     target_path = PROFILES_DIR / f"{args.target}.yaml"
-    log.info("ЛКМ=осн.цвет, a=+цвет(под курсором), x=очистить доп., d=debug, Shift+ЛКМ/ijkl=центр, s=сохр, q=выход")
+    log.info("左键=主色, a=+颜色(光标下), x=清除附加, d=调试, Shift+左键/ijkl=中心, s=保存, q=退出")
 
     saved_pos = _load_positions()
     live_rects = dict(saved_pos)
@@ -177,7 +177,7 @@ def main():
             continue
         shared["frame"] = frame
 
-        # окно закрыли крестиком -> выходим без ошибки
+        # 窗口被关闭按钮关闭 -> 无错误退出
         try:
             if cv2.getWindowProperty(WIN, cv2.WND_PROP_VISIBLE) < 1:
                 break
@@ -212,7 +212,7 @@ def main():
             f"colors {shared['colors']}",
             f"primary HSV {lo.tolist()}..{hi.tolist()}",
             f"targets {len(points)}  in-radius {n_in}  radius {radius}",
-            "LMB=color  a=+color  x=clear  d=debug-save  Shift+LMB/ijkl=center  s=save  q=quit",
+            "左键=颜色  a=+颜色  x=清除  d=调试保存  Shift+左键/ijkl=中心  s=保存  q=退出",
         ]
         for i, t in enumerate(lines):
             y = 22 + i * 22
@@ -224,7 +224,7 @@ def main():
 
         k = cv2.waitKey(1) & 0xFF
 
-        # восстановить позиции окон один раз (после того как окна реально созданы)
+        # 恢复窗口位置一次（在窗口真正创建之后）
         if not pos_restored:
             for t in (WIN, MASK):
                 _apply_window_rect(t, saved_pos.get(t) or DEFAULT_RECTS.get(t))
@@ -239,21 +239,21 @@ def main():
         elif k == ord("s"):
             save_calibration(target_path, shared["colors"], hue_tol, sat_min, val_min,
                              min_area, radius, shared["center_off"], close_px)
-            log.info("Сохранено в %s. Запуск: python -m src.main --profile %s", target_path, args.target)
+            log.info("已保存到 %s。启动: python -m src.main --profile %s", target_path, args.target)
         elif k == ord("a"):
             lx, ly = shared["last_xy"]
             c = sample_rgb(frame, lx, ly)
             shared["colors"].append(c)
-            log.info("Добавлен цвет RGB %s (всего %d)", c, len(shared["colors"]))
+            log.info("已添加颜色 RGB %s (共 %d)", c, len(shared["colors"]))
         elif k == ord("d"):
             import os; os.makedirs("_debug", exist_ok=True)
             cv2.imwrite("_debug/_debug_frame.png", frame)
             cv2.imwrite("_debug/_debug_vis.png", vis)
             cv2.imwrite("_debug/_debug_mask.png", mask)
-            log.info("Debug сохранён в _debug/ (целей: %d)", len(points))
+            log.info("调试已保存到 _debug/ (目标: %d)", len(points))
         elif k == ord("x"):
             shared["colors"] = [shared["colors"][0]]
-            log.info("Доп. цвета очищены.")
+            log.info("附加颜色已清除。")
         elif k == ord("i"):
             shared["center_off"][1] -= 5
         elif k == ord("k"):

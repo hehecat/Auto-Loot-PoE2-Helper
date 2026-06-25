@@ -1,7 +1,7 @@
-"""Опциональная авто-автоматика: нажатие клавиш (фласки/скиллы) по таймерам.
+"""可选自动按键：按计时器按下按键（药水/技能）。
 
-ВЫКЛЮЧЕНА по умолчанию (automation.enabled=false). Срабатывает только когда мастер-флаг
-активен (хоткей toggle) и, если задано, окно игры в фокусе.
+默认关闭（automation.enabled=false）。仅在主开关激活（快捷键 toggle）
+且（如设置）游戏窗口处于焦点时触发。
 """
 import threading
 import time
@@ -31,7 +31,7 @@ class Automation(threading.Thread):
     def run(self):
         if not self.enabled or not self.actions:
             return
-        self.log.info("Авто-автоматика активна: %s",
+        self.log.info("自动自动化已激活: %s",
                       ", ".join(f"{a['name']}({a['key']}/{a['interval_ms']}ms)" for a in self.actions))
         now = time.perf_counter()
         for a in self.actions:

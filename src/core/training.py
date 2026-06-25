@@ -1,9 +1,9 @@
-"""Режим обучения: запоминание новых предметов по клику.
+"""学习模式：通过点击记忆新物品。
 
-Пользователь кликает на предмет на экране, вводит название/категорию,
-и бот запоминает цветовые характеристики этого предмета для будущего подбора.
+用户点击屏幕上的物品，输入名称/类别，机器人会记住该物品的颜色特征
+以供未来拾取。
 
-Правила сохраняются в custom_rules.yaml в папке profiles.
+规则保存在 profiles 文件夹中的 custom_rules.yaml 文件中。
 """
 import json
 import logging
@@ -33,7 +33,7 @@ def _save_rules(rules):
 
 
 def _sample_region_hsv(frame_bgr, x, y, radius=15):
-    """Собрать HSV-статистику в области вокруг точки."""
+    """收集点周围区域的 HSV 统计数据。"""
     h, w = frame_bgr.shape[:2]
     x1 = max(0, x - radius)
     y1 = max(0, y - radius)
@@ -59,7 +59,7 @@ def _sample_region_hsv(frame_bgr, x, y, radius=15):
 
 
 class TrainingMode:
-    """Интерактивный режим обучения новых предметов."""
+    """交互式学习新物品模式。"""
 
     def __init__(self):
         self.rules = _load_rules()
@@ -67,7 +67,7 @@ class TrainingMode:
         self._current_item = None
 
     def start_record(self, name, category="custom"):
-        """Начать запись нового предмета."""
+        """开始记录新物品。"""
         self._recording = True
         self._current_item = {
             "name": name,
@@ -75,17 +75,17 @@ class TrainingMode:
             "samples": [],
             "added_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
-        _log.info("Запись предмета '%s' (категория: %s). Кликни на предметы.", name, category)
+        _log.info("开始记录物品 '%s' (分类: %s)。请点击物品。", name, category)
 
     def add_sample(self, frame_bgr, x, y):
-        """Добавить образец предмета по координатам."""
+        """按坐标添加物品样本。"""
         if not self._recording or self._current_item is None:
             return False
 
         sample = _sample_region_hsv(frame_bgr, x, y)
         if sample:
             self._current_item["samples"].append(sample)
-            _log.info("Образец #%d для '%s': RGB=%s",
+            _log.info("样本 #%d 用于 '%s': RGB=%s",
                       len(self._current_item["samples"]),
                       self._current_item["name"],
                       sample["rgb_center"])
@@ -93,7 +93,7 @@ class TrainingMode:
         return False
 
     def stop_record(self):
-        """Завершить запись и сохранить предмет."""
+        """完成记录并保存物品。"""
         if not self._recording or self._current_item is None:
             return None
 
@@ -112,7 +112,7 @@ class TrainingMode:
 
             self.rules["items"].append(self._current_item)
             _save_rules(self.rules)
-            _log.info("Предмет '%s' сохранён (%d образцов).",
+            _log.info("物品 '%s' 已保存 (%d 个样本)。",
                       self._current_item["name"], len(samples))
 
         item = self._current_item
@@ -121,13 +121,13 @@ class TrainingMode:
         return item
 
     def get_rules(self):
-        """Получить все правила обучения."""
+        """获取所有学习规则。"""
         return self.rules.get("items", [])
 
     def find_match(self, hsv_pixel):
-        """Найти совпадение пикселя с обученными предметами.
+        """查找像素与已学习物品的匹配。
 
-        Возвращает (name, category) или None.
+        返回 (name, category) 或 None。
         """
         h, s, v = hsv_pixel
         for item in self.rules.get("items", []):
@@ -142,12 +142,12 @@ class TrainingMode:
         return None
 
     def delete_item(self, name):
-        """Удалить предмет по имени."""
+        """按名称删除物品。"""
         before = len(self.rules.get("items", []))
         self.rules["items"] = [i for i in self.rules.get("items", []) if i["name"] != name]
         after = len(self.rules["items"])
         if before != after:
             _save_rules(self.rules)
-            _log.info("Предмет '%s' удалён.", name)
+            _log.info("物品 '%s' 已删除。", name)
             return True
         return False

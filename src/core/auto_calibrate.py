@@ -1,7 +1,7 @@
-"""Автокалибровка: автоматическое определение цветов фильтра при старте.
+"""自动校准：启动时自动检测过滤器颜色。
 
-Сканирует кадр экрана, ищет характерные цвета NeverSink фильтра
-и настраивает HSV-пороги без ручной калибровки.
+扫描屏幕画面，查找 NeverSink 过滤器的特征颜色，
+无需手动校准即可设置 HSV 阈值。
 """
 import logging
 import time
@@ -11,7 +11,7 @@ import numpy as np
 
 _log = logging.getLogger("autoloot.calibrate")
 
-# Характерные цвета NeverSink PoE2 фильтра (R, G, B)
+# NeverSink PoE2 过滤器的特征颜色（R、G、B）
 NEVERSINK_COLORS = {
     "currency_orange": (255, 120, 0),
     "currency_gold": (255, 199, 0),
@@ -31,7 +31,7 @@ def _rgb_to_hsv(rgb):
 
 
 def _score_color_region(hsv_frame, rgb, hue_tol=8, sat_min=80, val_min=80):
-    """Оценить сколько пикселей цвета rgb на кадре."""
+    """估算帧上有多少 rgb 颜色像素。"""
     h_center, s_center, v_center = _rgb_to_hsv(rgb)
     lo = np.array([max(0, h_center - hue_tol), sat_min, val_min], dtype=np.uint8)
     hi = np.array([min(179, h_center + hue_tol), 255, 255], dtype=np.uint8)
@@ -40,9 +40,9 @@ def _score_color_region(hsv_frame, rgb, hue_tol=8, sat_min=80, val_min=80):
 
 
 def auto_detect_colors(frame_bgr, min_pixels=50):
-    """Автоматически определить какие цвета фильтра видны на кадре.
+    """自动检测帧上可见的过滤器颜色。
 
-    Возвращает dict {category: [R, G, B]} для обнаруженных цветов.
+    返回 dict {category: [R, G, B]} 用于检测到的颜色。
     """
     if frame_bgr is None or frame_bgr.size == 0:
         return {}
@@ -54,15 +54,15 @@ def auto_detect_colors(frame_bgr, min_pixels=50):
         score = _score_color_region(hsv, rgb, hue_tol=10, sat_min=80, val_min=80)
         if score >= min_pixels:
             detected[name] = list(rgb)
-            _log.debug("Цвет '%s' обнаружен: %d пикселей", name, score)
+            _log.debug("颜色 '%s' 已检测到: %d 像素", name, score)
 
     return detected
 
 
 def auto_calibrate_hsv_ranges(detected_colors, hue_tol=8, sat_min=100, val_min=100):
-    """Вычислить оптимальные HSV-пороги для обнаруженных цветов.
+    """为检测到的颜色计算最佳 HSV 阈值。
 
-    Возвращает {category: {"marker_rgb": [R,G,B], "hue_tolerance": N, ...}}
+    返回 {category: {"marker_rgb": [R,G,B], "hue_tolerance": N, ...}}
     """
     result = {}
     for name, rgb in detected_colors.items():
@@ -77,11 +77,11 @@ def auto_calibrate_hsv_ranges(detected_colors, hue_tol=8, sat_min=100, val_min=1
 
 
 def try_auto_calibrate(capture, region, attempts=3, delay=0.5):
-    """Попытаться автоматически откалиброваться по нескольким кадрам.
+    """尝试通过多帧自动校准。
 
-    Возвращает detected_colors dict или пустой dict если не удалось.
+    返回 detected_colors dict，如果失败则返回空 dict。
     """
-    _log.info("Автокалибровка: сканирую %d кадров...", attempts)
+    _log.info("自动校准: 正在扫描 %d 帧...", attempts)
     all_colors = {}
 
     for i in range(attempts):
@@ -98,8 +98,8 @@ def try_auto_calibrate(capture, region, attempts=3, delay=0.5):
         time.sleep(delay)
 
     if all_colors:
-        _log.info("Автокалибровка: обнаружены цвета %s", list(all_colors.keys()))
+        _log.info("自动校准: 检测到颜色 %s", list(all_colors.keys()))
     else:
-        _log.warning("Автокалибровка: цвета не обнаружены. Используй ручную калибровку.")
+        _log.warning("自动校准: 未检测到颜色。请使用手动校准。")
 
     return all_colors

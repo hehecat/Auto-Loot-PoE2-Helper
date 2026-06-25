@@ -1,7 +1,7 @@
-"""Логирование подбора в CSV-файл для анализа статистики.
+"""将拾取记录记录到 CSV 文件以进行统计分析。
 
-Формат: timestamp, category, x, y, screen_x, screen_y
-Файл: _debug/pickup_log_<date>.csv (один файл в день)
+格式：timestamp、category、x、y、screen_x、screen_y
+文件：_debug/pickup_log_<date>.csv（每天一个文件）
 """
 import csv
 import os

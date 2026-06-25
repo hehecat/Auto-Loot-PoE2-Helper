@@ -1,16 +1,16 @@
-"""Точка входа. Захват окна PoE2 -> детекция цвета-маркера -> подбор по хоткею + оверлей.
+"""入口点。捕获 PoE2 窗口 -> 检测标记颜色 -> 通过快捷键拾取 + 浮窗。
 
-Безопасность: клики/автоматика только когда окно игры в фокусе. Без найденного окна
-(фолбэк на монитор) клики отключены.
+安全性：仅在游戏窗口处于焦点时进行点击/自动操作。未找到窗口时
+（回退到显示器），点击被禁用。
 
-Режимы (loot.mode): hold (пока зажат pickup), toggle (вкл/выкл по toggle), single (клик за нажатие).
-Профили: --profile <name> или хоткей profile (циклом). Авто-фласки/скиллы: секция automation.
+模式（loot.mode）：hold（按住 pickup 时）、toggle（按 toggle 开/关）、single（每次按键点击一次）。
+配置文件：--profile <name> 或快捷键 profile（循环切换）。自动药水/技能：automation 部分。
 
-Запуск:
-    python -m src.main                  # рабочий режим + оверлей
+运行：
+    python -m src.main                  # 工作模式 + 浮窗
     python -m src.main --profile mapping
     python -m src.main --no-overlay
-    python -m src.main --calibrate      # окно подсветки целей (без оверлея)
+    python -m src.main --calibrate      # 目标高亮窗口（无浮窗）
 """
 import argparse
 import threading
@@ -44,7 +44,7 @@ class State:
         self.pickup_held = False
         self.single_request = False
         self.pending_profile = None
-        self.active_categories = None  # None = все, set = только указанные
+        self.active_categories = None  # None = 全部，set = 仅指定的类别
 
     def toggle_auto(self):
         with self._lock:
@@ -77,12 +77,12 @@ class State:
             return name
 
     def set_category_filter(self, categories):
-        """Установить фильтр категорий (None = все)."""
+        """设置类别过滤器（None = 全部）。"""
         with self._lock:
             self.active_categories = set(categories) if categories else None
 
     def get_active_categories(self):
-        """Получить активные категории."""
+        """获取当前激活的类别。"""
         with self._lock:
             return self.active_categories
 
@@ -136,7 +136,7 @@ def build_detector(cfg):
 
 
 def category_for_pixel(hsv, tx, ty, cat_map, hue_tol, sat_min, val_min):
-    """Определить категорию предмета по цвету пикселя в точке клика."""
+    """根据点击位置像素颜色确定物品类别。"""
     from .vision.color_detector import rgb_to_hsv_bounds
     if not (0 <= ty < hsv.shape[0] and 0 <= tx < hsv.shape[1]):
         return "?"
@@ -149,7 +149,7 @@ def category_for_pixel(hsv, tx, ty, cat_map, hue_tol, sat_min, val_min):
 
 
 def compute_priorities(points, hsv, cat_map, priority_cfg, hue_tol, sat_min, val_min):
-    """Вернуть {(cx,cy): priority_int} для точек в кадре. Меньше = важнее."""
+    """返回帧中各点的 {(cx,cy): priority_int}。数值越小越重要。"""
     if not cat_map or not priority_cfg:
         return {}
     from .vision.color_detector import rgb_to_hsv_bounds
@@ -172,12 +172,12 @@ def compute_priorities(points, hsv, cat_map, priority_cfg, hue_tol, sat_min, val
 
 
 def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
-             cap, engine, live, apply_profile, hp_watcher=None, state=None):
+             cap, engine, live, apply_profile, hp_watcher=None, state=None, telegram=None):
     target_fps = max(1, cfg["capture"].get("target_fps", 30))
     frame_budget = 1.0 / target_fps
     last_log = 0.0
     picked = 0
-    stats = {}   # {category: count} — счётчик по категориям за сессию
+    stats = {}   # {category: count} — 会话期间各类别的计数器
     vp = cfg.get("vision", {})
     loot_cfg = cfg.get("loot", {})
     priority_cfg = loot_cfg.get("category_priority", {})
@@ -266,14 +266,15 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
                             hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
                         cat = category_for_pixel(hsv_frame, tx, ty, cat_map,
                                                   hue_tol, sat_min, val_min)
-                        log.info("Подобрано %s: (%d,%d)", cat, tx, ty)
+                        log.info("已拾取 %s: (%d,%d)", cat, tx, ty)
                     else:
-                        log.info("Подобрано: (%d,%d)", tx, ty)
+                        log.info("已拾取: (%d,%d)", tx, ty)
                     stats[cat] = stats.get(cat, 0) + 1
                     pickup_log.log(cat, tx, ty,
                                    region["left"] + tx, region["top"] + ty)
                     stats_collector.record(cat, region["left"] + tx, region["top"] + ty)
-                    telegram.notify(cat, x=region["left"] + tx, y=region["top"] + ty)
+                    if telegram:
+                        telegram.notify(cat, x=region["left"] + tx, y=region["top"] + ty)
 
             if hp_watcher:
                 hp_watcher.check(frame, foreground)
@@ -283,12 +284,12 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
                           foreground=foreground,
                           stats=dict(stats),
                           active_cat=", ".join(sorted(active_categories)) if active_categories else "all",
-                          session_stats=f"{stats_collector.session.total} предм ({stats_collector.session.picks_per_minute:.0f}/мин)",
+                          session_stats=f"{stats_collector.session.total} 件 ({stats_collector.session.picks_per_minute:.0f}/分钟)",
                           hp=round(hp_watcher.hp_ratio * 100) if hp_watcher else None)
 
             now = time.perf_counter()
             if now - last_log >= 5.0:
-                log.info("Целей: %d (в радиусе %d), подобрано: %d", len(points), len(in_radius), picked)
+                log.info("目标: %d (范围内 %d), 已拾取: %d", len(points), len(in_radius), picked)
                 last_log = now
 
             if args.calibrate:
@@ -300,8 +301,8 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
                 for (cx, cy, _a) in points:
                     color = (0, 255, 0) if (cx, cy) in rset else (0, 0, 255)
                     cv2.circle(vis, (cx, cy), 8, color, 2)
-                cv2.imshow("AutoLoot — detections", vis)
-                cv2.imshow("AutoLoot — mask", mask)
+                cv2.imshow("自动拾取 — 检测", vis)
+                cv2.imshow("自动拾取 — 遮罩", mask)
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("q"):
                     stop_event.set()
@@ -315,7 +316,7 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
             if elapsed < frame_budget:
                 time.sleep(frame_budget - elapsed)
     except KeyboardInterrupt:
-        log.info("Прервано (Ctrl+C).")
+        log.info("已中断 (Ctrl+C)。")
         stop_event.set()
     finally:
         pickup_log.close()
@@ -326,13 +327,13 @@ def run_loop(args, cfg, log, stop_event, status, win, region, clicks_enabled,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Auto Loot PoE Helper")
+    parser = argparse.ArgumentParser(description="自动拾取 PoE 助手")
     parser.add_argument("--calibrate", action="store_true",
-                        help="окно с подсветкой целей и HSV-маской (без оверлея)")
-    parser.add_argument("--no-overlay", action="store_true", help="не показывать оверлей")
-    parser.add_argument("--gui", action="store_true", help="запустить GUI вместо консоли")
-    parser.add_argument("--profile", default=None, help="имя стартового профиля (config/profiles/<name>.yaml)")
-    parser.add_argument("--config", default=None, help="путь к произвольному конфигу (yaml)")
+                        help="显示目标高亮窗口和 HSV 遮罩 (无浮窗)")
+    parser.add_argument("--no-overlay", action="store_true", help="不显示浮窗")
+    parser.add_argument("--gui", action="store_true", help="启动 GUI 而非控制台")
+    parser.add_argument("--profile", default=None, help="启动配置名称 (config/profiles/<name>.yaml)")
+    parser.add_argument("--config", default=None, help="自定义配置文件路径 (yaml)")
     args = parser.parse_args()
 
     if args.gui:
@@ -342,19 +343,19 @@ def main():
 
     boot = load_config(args.config)
     log = get_logger(boot)
-    log.info("=== Auto Loot PoE Helper ===")
+    log.info("=== 自动拾取 PoE 助手 ===")
 
-    # --- выбор стартового профиля ---
+    # --- 选择起始配置文件 ---
     pm = ProfileManager()
     start = args.profile or boot.get("profiles", {}).get("start") or "default"
     if start not in pm.names:
-        log.warning("Профиль '%s' не найден, использую default. Доступны: %s", start, ", ".join(pm.names))
+        log.warning("配置 '%s' 未找到，使用默认配置。可用: %s", start, ", ".join(pm.names))
         start = "default"
     pm.set_current(start)
     cfg = load_config(args.config) if args.config else pm.load(start)
-    log.info("Профили: %s | старт: %s", ", ".join(pm.names), start)
+    log.info("配置: %s | 启动: %s", ", ".join(pm.names), start)
 
-    # --- окно игры (с фолбэком на основной монитор) ---
+    # --- 游戏窗口（回退到主显示器）---
     win = GameWindow(cfg["game"]["window_title"])
     region = None
     clicks_enabled = False
@@ -362,20 +363,20 @@ def main():
         region = win.get_region()
         clicks_enabled = region is not None
         if region:
-            log.info("Окно найдено: hwnd=%s, регион=%s", win.hwnd, region)
+            log.info("已找到窗口: hwnd=%s, 区域=%s", win.hwnd, region)
         else:
-            log.warning("Окно '%s' найдено, но свёрнуто — жду разворачивания.",
+            log.warning("已找到窗口 '%s'，但已最小化 — 等待恢复。",
                         cfg["game"]["window_title"])
     if not win.hwnd or region is None:
         monitor_idx = cfg.get("game", {}).get("monitor", 0)
         region = monitor_region(monitor_idx)
         clicks_enabled = False
-        log.warning("Окно '%s' не найдено/свёрнуто — монитор #%s, КЛИКИ ОТКЛЮЧЕНЫ.",
+        log.warning("窗口 '%s' 未找到/已最小化 — 显示器 #%s, 点击已禁用。",
                     cfg["game"]["window_title"], monitor_idx)
 
     cap = ScreenCapture(cfg["capture"]["backend"],
                         double_buffer=cfg["capture"].get("double_buffer", False))
-    log.info("Захват: backend=%s, double_buffer=%s", cap.backend, cap._double_buffer)
+    log.info("捕获: backend=%s, double_buffer=%s", cap.backend, cap._double_buffer)
 
     if cfg.get("vision", {}).get("auto_calibrate", False) and region:
         detected = try_auto_calibrate(cap, region)
@@ -384,7 +385,7 @@ def main():
                 cat_name = name.split("_")[0]
                 if cat_name not in cfg.get("filter", {}).get("category_colors", {}):
                     cfg.setdefault("filter", {}).setdefault("category_colors", {})[cat_name] = rgb
-            log.info("Автокалибровка: цвета применены из кадра")
+            log.info("自动校准: 已从画面应用颜色")
 
     loot = cfg["loot"]
     mouse = Mouse(
@@ -411,10 +412,10 @@ def main():
             model=loot_eval_cfg.get("llm_model", "gpt-4o-mini"),
             base_url=loot_eval_cfg.get("llm_base_url"),
         )
-        log.info("Loot evaluator: LLM (%s)", loot_eval_cfg.get("llm_model", "gpt-4o-mini"))
+        log.info("拾取评估器: LLM (%s)", loot_eval_cfg.get("llm_model", "gpt-4o-mini"))
     else:
         evaluator = RuleEvaluator()
-        log.info("Loot evaluator: rules")
+        log.info("拾取评估器: 规则")
 
     tg_cfg = cfg.get("telegram", {})
     telegram = TelegramNotifier(
@@ -425,9 +426,8 @@ def main():
 
     live = Live(det=build_detector(cfg), mode=loot.get("mode", "hold"),
                 cat_map=cfg.get("filter", {}).get("category_colors", {}))
-    log.info("Цвета детекции: %s (HSV-окон: %d)", live.det.colors, len(live.det.bounds))
-    log.warning("Захват экрана работает только в режиме Windowed / Windowed Fullscreen "
-                "(не Exclusive Fullscreen).")
+    log.info("检测颜色: %s (HSV 窗口: %d)", live.det.colors, len(live.det.bounds))
+    log.warning("屏幕捕获仅在窗口化/窗口化全屏模式下工作 (非独占全屏)。")
 
     state = State()
     stop_event = threading.Event()
@@ -453,10 +453,10 @@ def main():
             engine.dedup_ms = ploot.get("dedup_ms", 0) / 1000.0
         status.update(profile=name, mode=live.mode)
         colors = [pcfg["filter"]["marker_rgb"]] + [c for c in pcfg["filter"].get("category_colors", {}).values() if c]
-        log.info("Профиль -> %s | radius=%d mode=%s colors=%d",
+        log.info("配置 -> %s | 半径=%d 模式=%s 颜色=%d",
                  name, engine.radius, live.mode, len(colors))
 
-    # --- хоткеи ---
+    # --- 快捷键 ---
     k_quit = parse_key(cfg["hotkeys"]["quit"])
     k_toggle = parse_key(cfg["hotkeys"]["toggle"])
     k_pickup = parse_key(cfg["hotkeys"]["pickup"])
@@ -486,9 +486,9 @@ def main():
             engine.dedup_px = loot_new.get("dedup_px", 24)
             engine.dedup_ms = loot_new.get("dedup_ms", 0) / 1000.0
             engine._stuck_timeout = loot_new.get("stuck_timeout_s", 5.0)
-            log.info("Конфиг перезагружен. Режим=%s radius=%d", live.mode, engine.radius)
+            log.info("配置已重载。模式=%s 半径=%d", live.mode, engine.radius)
         except Exception as e:
-            log.warning("Ошибка перезагрузки конфига: %s", e)
+            log.warning("重载配置失败: %s", e)
 
     def open_settings():
         try:
@@ -496,7 +496,7 @@ def main():
             gui = SettingsGUI(on_apply=apply_settings)
             gui.open(cfg)
         except Exception as e:
-            log.warning("GUI настроек не открылось: %s", e)
+            log.warning("设置界面打开失败: %s", e)
 
     def apply_settings(new_cfg):
         nonlocal cfg
@@ -518,9 +518,9 @@ def main():
             engine.dedup_ms = loot_new.get("dedup_ms", 0) / 1000.0
             engine._stuck_timeout = loot_new.get("stuck_timeout_s", 5.0)
             engine.roi_margin = loot_new.get("roi_margin_px", 100)
-            log.info("Настройки применены: mode=%s radius=%d", live.mode, engine.radius)
+            log.info("设置已应用: 模式=%s 半径=%d", live.mode, engine.radius)
         except Exception as e:
-            log.warning("Ошибка применения настроек: %s", e)
+            log.warning("应用设置失败: %s", e)
 
     listener = None
     combo_tracker = ComboTracker()
@@ -534,7 +534,7 @@ def main():
                 return False
             if key_matches(key, k_toggle):
                 is_on = state.toggle_auto()
-                log.info("Мастер (toggle/автоматика): %s", "ВКЛ" if is_on else "выкл")
+                log.info("总开关 (开关/自动化): %s", "开启" if is_on else "关闭")
             if key_matches(key, k_profile):
                 state.set_pending_profile(pm.next())
             if key_matches(key, k_reload):
@@ -544,7 +544,7 @@ def main():
             if key in cat_hotkeys:
                 cat = cat_hotkeys[key]
                 state.set_category_filter([cat])
-                log.info("Категория: %s (только эта)", cat)
+                log.info("分类: %s (仅此分类)", cat)
             if key_matches(key, k_pickup):
                 state.set_pickup(True)
                 if live.mode == "single":
@@ -554,22 +554,21 @@ def main():
             combo_tracker.on_release(key)
             if key in cat_hotkeys:
                 state.set_category_filter(None)
-                log.info("Категории: все")
+                log.info("分类: 全部")
             if key_matches(key, k_pickup):
                 state.set_pickup(False)
 
         listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         listener.start()
-        log.info("Хоткеи: pickup=%s toggle=%s profile=%s reload=%s quit=%s | режим=%s",
+        log.info("快捷键: 拾取=%s 开关=%s 配置=%s 重载=%s 退出=%s | 模式=%s",
                  cfg["hotkeys"]["pickup"], cfg["hotkeys"]["toggle"],
                  cfg["hotkeys"].get("profile", "f7"), cfg["hotkeys"].get("reload", "f5"),
                  cfg["hotkeys"]["quit"], live.mode)
     except Exception as e:
-        log.warning("Слушатель клавиатуры недоступен (%s). "
-                    "Хоткеи не работают — управление только через Ctrl+C / оверлей.", e)
+        log.warning("键盘监听不可用 (%s)。快捷键无法使用 — 仅通过 Ctrl+C / 浮窗控制。", e)
         status.update(hotkeys_disabled=True)
 
-    # --- авто-автоматика ---
+    # --- 自动按键 ---
     def auto_active():
         fg = win.is_foreground() if clicks_enabled else False
         return (state.auto_on, fg)
@@ -579,17 +578,17 @@ def main():
 
     hp_watcher = HPWatcher(cfg.get("hp_flask", {}), log)
     if hp_watcher.enabled:
-        log.info("HP фласка: клавиша=%s порог=%.0f%% кулдаун=%.1fс",
+        log.info("生命药剂: 按键=%s 阈值=%.0f%% 冷却=%.1f秒",
                  cfg["hp_flask"]["key"], hp_watcher.threshold * 100, hp_watcher.cooldown)
 
     use_overlay = cfg.get("overlay", {}).get("enabled", True) and not args.no_overlay and not args.calibrate
-    log.info("Старт. Категории override: %s%s",
-             ", ".join(cfg["filter"]["categories"]), " | оверлей: вкл" if use_overlay else "")
+    log.info("启动。分类覆盖: %s%s",
+             ", ".join(cfg["filter"]["categories"]), " | 浮窗: 开启" if use_overlay else "")
 
     loop_args = (args, cfg, log, stop_event, status, win, region, clicks_enabled,
-                 cap, engine, live, apply_profile, hp_watcher, state)
+                 cap, engine, live, apply_profile, hp_watcher, state, telegram)
 
-    # --- трей-икон ---
+    # --- 托盘图标 ---
     from .ui.tray import TrayIcon, HAS_TRAY
     tray = None
     if cfg.get("overlay", {}).get("tray_icon", True) and HAS_TRAY:
@@ -612,9 +611,9 @@ def main():
             Overlay(status.snapshot, stop_event,
                     poll_ms=cfg.get("overlay", {}).get("poll_ms", 120)).run()
         except KeyboardInterrupt:
-            log.info("Прервано (Ctrl+C).")
+            log.info("已中断 (Ctrl+C)。")
         except Exception as e:
-            log.warning("Оверлей не запустился (%s) — работаю без него.", e)
+            log.warning("浮窗启动失败 (%s) — 无浮窗运行。", e)
             stop_event.wait()
         finally:
             stop_event.set()
@@ -630,15 +629,15 @@ def main():
     summary, csv_path = stats_collector.end_session()
     log.info(summary)
     if csv_path:
-        log.info("Детальный лог: %s", csv_path)
+        log.info("详细日志: %s", csv_path)
 
     try:
         report_path = generate_html_report(stats_collector.session)
-        log.info("HTML отчёт: %s", report_path)
+        log.info("HTML 报告: %s", report_path)
     except Exception as e:
-        log.debug("HTML отчёт не сгенерирован: %s", e)
+        log.debug("HTML 报告未生成: %s", e)
 
-    log.info("Остановлено.")
+    log.info("已停止。")
     return 0
 
 

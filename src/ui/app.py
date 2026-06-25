@@ -1,11 +1,11 @@
-"""Полноценное GUI приложение Auto Loot PoE2 Helper (PyQt5).
+"""完整的 Auto Loot PoE2 Helper GUI 应用程序（PyQt5）。
 
-Вкладки:
-  Dashboard  — статус в реальном времени
-  Profiles   — управление профилями
-  Settings   — все настройки
-  Stats      — статистика сессии
-  Logs       — логи в реальном времени
+标签页：
+  Dashboard  — 实时状态
+  Profiles   — 配置管理
+  Settings   — 全部设置
+  Stats      — 会话统计
+  Logs       — 实时日志
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ from ..config_manager import load_config, DEFAULT_PATH
 from ..core.profiles import ProfileManager, PROFILES_DIR
 
 
-# === Стиль ===
+# === 样式 ===
 DARK_STYLE = """
 QMainWindow { background: #1a1a2e; }
 QTabWidget::pane { border: 1px solid #2a2a4a; background: #16213e; }
@@ -77,7 +77,7 @@ QWidget { color: #ffffff; }
 
 
 class BotRunner:
-    """Управление ботом: запуск/остановка в фоновом потоке."""
+    """机器人管理：在后台线程中启动/停止。"""
 
     def __init__(self):
         self._thread = None
@@ -162,12 +162,12 @@ class BotRunner:
                     from ..input.gamepad import GamepadEmulator
                     gamepad = GamepadEmulator()
                     if gamepad.start():
-                        log.info("Gamepad: ACTIVE - virtual Xbox created, DualSense disabled")
+                        log.info("手柄: 已激活 - 虚拟 Xbox 已创建，DualSense 已禁用")
                     else:
-                        log.warning("Gamepad: FAILED to initialize")
+                        log.warning("手柄: 初始化失败")
                         gamepad = None
                 except Exception as e:
-                    log.error("Gamepad error: %s", e)
+                    log.error("手柄错误: %s", e)
                     gamepad = None
 
             engine = LootEngine(
@@ -260,7 +260,7 @@ class BotRunner:
                         center_offset=engine.center_offset,
                         frame_size=[frame.shape[1], frame.shape[0]],
                         window_region=region,
-                        session_stats=f"{stats_collector.session.total} items ({stats_collector.session.picks_per_minute:.0f}/min)",
+                        session_stats=f"{stats_collector.session.total} 件 ({stats_collector.session.picks_per_minute:.0f}/分钟)",
                     )
 
                     elapsed = time.perf_counter() - t0
@@ -272,9 +272,9 @@ class BotRunner:
                 pickup_log.close()
                 if gamepad:
                     gamepad.stop()
-                    log.info("Gamepad stopped, DualSense re-enabled")
+                    log.info("手柄已停止，DualSense 已重新启用")
         except Exception as e:
-            log.error("Bot error: %s", e)
+            log.error("程序错误: %s", e)
         finally:
             self._running = False
             self._update_status(active=False)
@@ -300,17 +300,17 @@ if HAS_PYQT5:
 
         def _setup_ui(self):
             layout = QVBoxLayout(self)
-            header = QLabel("AUTO LOOT POE2 HELPER")
+            header = QLabel("自动拾取 PoE2 助手")
             header.setObjectName("header")
             header.setAlignment(Qt.AlignCenter)
             layout.addWidget(header)
 
-            self.status_label = QLabel("STOPPED")
+            self.status_label = QLabel("已停止")
             self.status_label.setObjectName("status-off")
             self.status_label.setAlignment(Qt.AlignCenter)
             layout.addWidget(self.status_label)
 
-            stats_group = QGroupBox("Stats")
+            stats_group = QGroupBox("状态")
             stats_layout = QFormLayout()
             self.mode_label = QLabel("-")
             self.profile_label = QLabel("default")
@@ -321,23 +321,23 @@ if HAS_PYQT5:
             self.hp_label = QLabel("-")
             self.cat_label = QLabel("all")
 
-            stats_layout.addRow("Mode:", self.mode_label)
-            stats_layout.addRow("Profile:", self.profile_label)
-            stats_layout.addRow("Targets:", self.targets_label)
-            stats_layout.addRow("In radius:", self.radius_label)
-            stats_layout.addRow("Picked:", self.picked_label)
-            stats_layout.addRow("Category:", self.cat_label)
-            stats_layout.addRow("Session:", self.session_label)
-            stats_layout.addRow("HP:", self.hp_label)
+            stats_layout.addRow("模式:", self.mode_label)
+            stats_layout.addRow("配置:", self.profile_label)
+            stats_layout.addRow("目标:", self.targets_label)
+            stats_layout.addRow("范围内:", self.radius_label)
+            stats_layout.addRow("已拾取:", self.picked_label)
+            stats_layout.addRow("分类:", self.cat_label)
+            stats_layout.addRow("会话:", self.session_label)
+            stats_layout.addRow("生命:", self.hp_label)
             stats_group.setLayout(stats_layout)
             layout.addWidget(stats_group)
 
             btn_layout = QHBoxLayout()
-            self.start_btn = QPushButton("START")
+            self.start_btn = QPushButton("启动")
             self.start_btn.setObjectName("success")
             self.start_btn.clicked.connect(self._start)
             btn_layout.addWidget(self.start_btn)
-            self.stop_btn = QPushButton("STOP")
+            self.stop_btn = QPushButton("停止")
             self.stop_btn.setObjectName("danger")
             self.stop_btn.clicked.connect(self._stop)
             self.stop_btn.setEnabled(False)
@@ -347,7 +347,7 @@ if HAS_PYQT5:
 
         def _update_status(self, data):
             active = data.get("active", False)
-            self.status_label.setText("RUNNING" if active else "STOPPED")
+            self.status_label.setText("运行中" if active else "已停止")
             self.status_label.setObjectName("status-on" if active else "status-off")
             self.status_label.setStyleSheet("")
             self.start_btn.setEnabled(not active)
@@ -386,16 +386,16 @@ if HAS_PYQT5:
 
         def _setup_ui(self):
             layout = QVBoxLayout(self)
-            header = QLabel("Profiles")
+            header = QLabel("配置管理")
             header.setObjectName("header")
             layout.addWidget(header)
             self.table = QTableWidget()
             self.table.setColumnCount(3)
-            self.table.setHorizontalHeaderLabels(["Name", "Mode", "Radius"])
+            self.table.setHorizontalHeaderLabels(["名称", "模式", "半径"])
             self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
             layout.addWidget(self.table)
             btn_layout = QHBoxLayout()
-            refresh_btn = QPushButton("Refresh")
+            refresh_btn = QPushButton("刷新")
             refresh_btn.clicked.connect(self._refresh)
             btn_layout.addWidget(refresh_btn)
             layout.addLayout(btn_layout)
@@ -420,7 +420,7 @@ if HAS_PYQT5:
 
         def _setup_ui(self):
             layout = QVBoxLayout(self)
-            header = QLabel("Settings")
+            header = QLabel("设置")
             header.setObjectName("header")
             layout.addWidget(header)
             scroll = QScrollArea()
@@ -445,7 +445,7 @@ if HAS_PYQT5:
             scroll.setWidget(container)
             layout.addWidget(scroll)
             btn_layout = QHBoxLayout()
-            save_btn = QPushButton("Apply")
+            save_btn = QPushButton("应用")
             save_btn.setObjectName("success")
             save_btn.clicked.connect(self._apply)
             btn_layout.addWidget(save_btn)
@@ -507,7 +507,7 @@ if HAS_PYQT5:
                 pass
 
         def _apply(self):
-            QMessageBox.information(self, "OK", "Settings applied.")
+            QMessageBox.information(self, "确定", "设置已应用。")
 
 
     class StatsTab(QWidget):
@@ -519,20 +519,20 @@ if HAS_PYQT5:
 
         def _setup_ui(self):
             layout = QVBoxLayout(self)
-            header = QLabel("Statistics")
+            header = QLabel("统计")
             header.setObjectName("header")
             layout.addWidget(header)
             self.total_label = QLabel("0")
             self.ppm_label = QLabel("0")
-            stats_group = QGroupBox("Session")
+            stats_group = QGroupBox("会话")
             stats_layout = QFormLayout()
-            stats_layout.addRow("Total:", self.total_label)
-            stats_layout.addRow("Per min:", self.ppm_label)
+            stats_layout.addRow("总计:", self.total_label)
+            stats_layout.addRow("每分钟:", self.ppm_label)
             stats_group.setLayout(stats_layout)
             layout.addWidget(stats_group)
             self.table = QTableWidget()
             self.table.setColumnCount(3)
-            self.table.setHorizontalHeaderLabels(["Category", "Count", "%"])
+            self.table.setHorizontalHeaderLabels(["分类", "数量", "%"])
             self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
             layout.addWidget(self.table)
 
@@ -560,7 +560,7 @@ if HAS_PYQT5:
 
         def _setup_ui(self):
             layout = QVBoxLayout(self)
-            header = QLabel("Logs")
+            header = QLabel("日志")
             header.setObjectName("header")
             layout.addWidget(header)
             self.log_text = QTextEdit()
@@ -568,7 +568,7 @@ if HAS_PYQT5:
             self.log_text.setFont(QFont("Consolas", 10))
             layout.addWidget(self.log_text)
             btn_layout = QHBoxLayout()
-            clear_btn = QPushButton("Clear")
+            clear_btn = QPushButton("清空")
             clear_btn.clicked.connect(lambda: self.log_text.clear())
             btn_layout.addWidget(clear_btn)
             layout.addLayout(btn_layout)
@@ -580,7 +580,7 @@ if HAS_PYQT5:
     class MainWindow(QMainWindow):
         def __init__(self):
             super().__init__()
-            self.setWindowTitle("Auto Loot PoE2 Helper")
+            self.setWindowTitle("自动拾取 PoE2 助手")
             self.setMinimumSize(900, 650)
             self.signals = Signals()
             self.bot = BotRunner()
@@ -590,11 +590,11 @@ if HAS_PYQT5:
             self.setCentralWidget(central)
             layout = QVBoxLayout(central)
             tabs = QTabWidget()
-            tabs.addTab(DashboardTab(self.signals, self.bot), "Dashboard")
-            tabs.addTab(ProfilesTab(), "Profiles")
-            tabs.addTab(SettingsTab(), "Settings")
-            tabs.addTab(StatsTab(self.signals), "Stats")
-            tabs.addTab(LogsTab(self.signals), "Logs")
+            tabs.addTab(DashboardTab(self.signals, self.bot), "仪表盘")
+            tabs.addTab(ProfilesTab(), "配置管理")
+            tabs.addTab(SettingsTab(), "设置")
+            tabs.addTab(StatsTab(self.signals), "统计")
+            tabs.addTab(LogsTab(self.signals), "日志")
             layout.addWidget(tabs)
             self._poll_timer = QTimer()
             self._poll_timer.timeout.connect(self._poll)
@@ -628,7 +628,7 @@ if HAS_PYQT5:
 
 def run_gui():
     if not HAS_PYQT5:
-        print("PyQt5 not installed. pip install PyQt5")
+        print("PyQt5 未安装。请运行: pip install PyQt5")
         return
     app = QApplication(sys.argv)
     app.setStyleSheet(DARK_STYLE)

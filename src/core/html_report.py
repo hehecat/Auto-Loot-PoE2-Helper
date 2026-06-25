@@ -1,7 +1,6 @@
-"""Генерация HTML-отчёта статистики сессии.
+"""生成会话统计的 HTML 报告。
 
-Создаёт красивый HTML-файл с графиками и таблицами
-после завершения сессии подбора.
+在拾取会话结束后创建包含图表和表格的精美 HTML 文件。
 """
 import json
 import time
@@ -16,16 +15,16 @@ def _fmt_time(seconds):
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     if h > 0:
-        return f"{h}ч {m}мин {s}сек"
+        return f"{h}时{m}分{s}秒"
     elif m > 0:
-        return f"{m}мин {s}сек"
-    return f"{s}сек"
+        return f"{m}分{s}秒"
+    return f"{s}秒"
 
 
 def generate_html_report(session_stats, output_path=None):
-    """Создать HTML-отчёт из SessionStats.
+    """从 SessionStats 创建 HTML 报告。
 
-    Возвращает путь к файлу.
+    返回文件路径。
     """
     if output_path is None:
         _DEBUG_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,10 +45,10 @@ def generate_html_report(session_stats, output_path=None):
         minute_data.append({"minute": minute, "count": session_stats.by_minute[minute]})
 
     html = f"""<!DOCTYPE html>
-<html lang="ru">
+<html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>Auto Loot — Отчёт сессии</title>
+<title>自动拾取 — 会话报告</title>
 <style>
 body {{ font-family: 'Segoe UI', Tahoma, sans-serif; background: #1a1a2e; color: #e0e0e0; margin: 40px; }}
 h1 {{ color: #00ff88; border-bottom: 2px solid #00ff88; padding-bottom: 10px; }}
@@ -67,30 +66,30 @@ tr:hover {{ background: #16213e; }}
 </style>
 </head>
 <body>
-<h1>Auto Loot PoE2 Helper — Отчёт сессии</h1>
+<h1>自动拾取 PoE2 助手 — 会话报告</h1>
 
 <div class="stats">
   <div class="stat">
     <div class="stat-value">{total}</div>
-    <div class="stat-label">Всего подобрано</div>
+    <div class="stat-label">总计拾取</div>
   </div>
   <div class="stat">
     <div class="stat-value">{_fmt_time(elapsed)}</div>
-    <div class="stat-label">Длительность</div>
+    <div class="stat-label">持续时间</div>
   </div>
   <div class="stat">
     <div class="stat-value">{ppm:.1f}</div>
-    <div class="stat-label">Предм/мин</div>
+    <div class="stat-label">件/分钟</div>
   </div>
   <div class="stat">
     <div class="stat-value">{len(cat_data)}</div>
-    <div class="stat-label">Категорий</div>
+    <div class="stat-label">分类数</div>
   </div>
 </div>
 
-<h2>По категориям</h2>
+<h2>按分类</h2>
 <table>
-<tr><th>Категория</th><th>Количество</th><th>Доля</th><th></th></tr>
+<tr><th>分类</th><th>数量</th><th>占比</th><th></th></tr>
 """
 
     for cat in cat_data:
@@ -108,17 +107,17 @@ tr:hover {{ background: #16213e; }}
     if minute_data:
         max_count = max(d["count"] for d in minute_data)
         html += """
-<h2>Активность по минутам</h2>
+<h2>每分钟活动</h2>
 <div class="chart" style="display:flex; align-items:flex-end; height:200px; gap:2px;">
 """
         for d in minute_data:
             bar_h = int(d["count"] / max(max_count, 1) * 180)
-            html += f'<div style="flex:1; background:#00ff88; height:{bar_h}px; border-radius:2px;" title="мин {d["minute"]}: {d["count"]}"></div>\n'
+            html += f'<div style="flex:1; background:#00ff88; height:{bar_h}px; border-radius:2px;" title="第{d["minute"]}分钟: {d["count"]}"></div>\n'
         html += "</div>\n"
 
     html += f"""
 <div class="footer">
-  Auto Loot PoE2 Helper — {time.strftime("%Y-%m-%d %H:%M:%S")}
+  自动拾取 PoE2 助手 — {time.strftime("%Y-%m-%d %H:%M:%S")}
 </div>
 </body>
 </html>"""

@@ -1,7 +1,7 @@
-"""Системный трей-икон (pystray) с основными управлениями.
+"""系统托盘图标（pystray），包含主要控制功能。
 
-Трей создаётся в отдельном потоке (daemon). Иконка показывает статус
-и提供 контекстное меню: Toggle, Profile, Settings, Reload, Quit.
+托盘在独立线程（daemon）中创建。图标显示状态并提供右键菜单：
+Toggle、Profile、Settings、Reload、Quit。
 """
 import logging
 import threading
@@ -17,7 +17,7 @@ except ImportError:
 
 
 def _make_icon(color="#00ff88"):
-    """Создать простую иконку 16x16 с цветным кружком."""
+    """创建一个带有彩色圆圈的简单 16x16 图标。"""
     img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
@@ -41,7 +41,7 @@ class TrayIcon:
 
     def start(self):
         if not HAS_TRAY:
-            _log.debug("pystray/Pillow не установлен — трей-икон недоступна.")
+            _log.debug("pystray/Pillow 未安装 — 系统托盘图标不可用。")
             return
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -60,28 +60,28 @@ class TrayIcon:
                     self.on_settings()
 
             menu = pystray.Menu(
-                pystray.MenuItem("Toggle (F8)", lambda: self.on_toggle(),
+                pystray.MenuItem("开关 (F8)", lambda: self.on_toggle(),
                                  default=True),
-                pystray.MenuItem("Settings (F6)", _settings),
-                pystray.MenuItem("Reload (F5)", lambda: self.on_reload()),
+                pystray.MenuItem("设置 (F6)", _settings),
+                pystray.MenuItem("重载 (F5)", lambda: self.on_reload()),
                 pystray.Menu.SEPARATOR,
                 *self._profile_items(),
                 pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Quit (F12)", lambda: self.on_quit()),
+                pystray.MenuItem("退出 (F12)", lambda: self.on_quit()),
             )
             self._icon = pystray.Icon(
-                "AutoLoot", _make_icon(), "Auto Loot PoE Helper", menu
+                "AutoLoot", _make_icon(), "自动拾取 PoE 助手", menu
             )
             self._icon.run()
         except Exception as e:
-            _log.debug("Трей-икон не запустилась: %s", e)
+            _log.debug("托盘图标启动失败: %s", e)
 
     def _profile_items(self):
         items = []
         for name in self.profile_names:
             items.append(
                 pystray.MenuItem(
-                    f"Profile: {name}",
+                    f"配置: {name}",
                     lambda n=name: self.on_profile(n) if self.on_profile else None,
                 )
             )

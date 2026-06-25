@@ -1,9 +1,8 @@
-"""Авто-фласка ХП: следит за уровнем жизней и жмёт клавишу при просадке.
+"""自动 HP 药水：监控生命值并在下降时按下按键。
 
-Работает независимо от F8 (toggle pickup) — всегда активна пока
-программа запущена и окно игры в фокусе.
+独立于 F8（toggle pickup）运行 — 只要程序运行且游戏窗口处于焦点就一直激活。
 
-Поддержка джойстика: если input_method=gamepad, жмёт L2 вместо клавиши.
+手柄支持：如果 input_method=gamepad，按下 L2 而不是键盘按键。
 """
 import time
 
@@ -37,30 +36,30 @@ class HPWatcher:
         self._log = log
         self._last_press = 0.0
         self._last_ratio = 1.0
-        self._max_raw = 0.0         # максимум сырого значения = полный ХП
+        self._max_raw = 0.0         # 原始值的最大值 = 满血
         self._warmup_until = time.perf_counter() + _WARMUP_SEC
         self._sound_cooldown = 0.0
 
     def set_gamepad(self, gamepad):
-        """Установить эмулятор джойстика."""
+        """设置手柄模拟器。"""
         self._gamepad = gamepad
 
     def check(self, frame_bgr, foreground):
-        """Вызывать на каждом кадре из главного цикла."""
+        """主循环中每帧调用。"""
         if not self.enabled or not foreground:
             return
 
         raw = detect_hp_ratio(frame_bgr, self.region)
 
-        # самокалибровка: обновляем максимум (= полный ХП)
+        # 自动校准：更新最大值（= 满血）
         if raw > self._max_raw:
             self._max_raw = raw
 
-        # нормированный HP относительно максимума
+        # 相对于最大值的标准化 HP
         hp = raw / self._max_raw if self._max_raw > 0.01 else 1.0
         self._last_ratio = hp
 
-        # во время прогрева только калибруемся, не нажимаем
+        # 预热期间只校准，不按下
         if time.perf_counter() < self._warmup_until:
             return
 
@@ -75,7 +74,7 @@ class HPWatcher:
                 self._kb.press(self._key)
                 self._kb.release(self._key)
             self._last_press = now
-            self._log.info("HP flask [%s] (HP ~%.0f%% < %.0f%%)",
+            self._log.info("生命药剂 [%s] (生命 ~%.0f%% < %.0f%%)",
                            self.input_method, hp * 100, self.threshold * 100)
             if self.sound and now - self._sound_cooldown > 3.0:
                 _beep()

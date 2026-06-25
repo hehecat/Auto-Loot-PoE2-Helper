@@ -1,4 +1,4 @@
-"""Логирование: консоль + файл autoloot.log."""
+"""日志记录：控制台 + autoloot.log 文件。"""
 import logging
 import sys
 

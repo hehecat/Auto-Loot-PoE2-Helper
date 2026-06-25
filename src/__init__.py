@@ -1,1 +1,1 @@
-"""Auto Loot PoE Helper — пакет приложения."""
+"""Auto Loot PoE Helper — 应用程序包。"""

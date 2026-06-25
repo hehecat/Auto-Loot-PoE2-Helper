@@ -1,6 +1,6 @@
-"""Поиск окна игры и его геометрии (клиентская область в экранных координатах).
+"""搜索游戏窗口及其几何信息（屏幕坐标中的客户区）。
 
-Поддержка multi-monitor: выбор монитора по индексу или имени.
+支持多显示器：根据索引或名称选择显示器。
 """
 import win32api
 import win32gui
@@ -25,12 +25,12 @@ class GameWindow:
         return self.hwnd
 
     def get_region(self):
-        """Клиентская область окна как dict(left, top, width, height) в экранных координатах."""
+        """窗口客户区，以屏幕坐标的 dict(left, top, width, height) 格式返回。"""
         if not self.hwnd:
             return None
         left, top, right, bottom = win32gui.GetClientRect(self.hwnd)
         if right - left <= 0 or bottom - top <= 0:
-            return None  # окно свёрнуто — нет клиентской области
+            return None  # 窗口已最小化 — 无客户区
         sx, sy = win32gui.ClientToScreen(self.hwnd, (left, top))
         ex, ey = win32gui.ClientToScreen(self.hwnd, (right, bottom))
         return {"left": sx, "top": sy, "width": ex - sx, "height": ey - sy}
@@ -40,7 +40,7 @@ class GameWindow:
 
     @staticmethod
     def primary_region():
-        """Регион основного монитора — фолбэк, когда окно игры не найдено."""
+        """主显示器区域 — 当未找到游戏窗口时的回退方案。"""
         return {
             "left": 0,
             "top": 0,
@@ -50,7 +50,7 @@ class GameWindow:
 
 
 def list_monitors():
-    """Список всех мониторов: [{"index": 0, "left": 0, "top": 0, "width": 1920, "height": 1080, "primary": True}, ...]"""
+    """所有显示器列表：[{"index": 0, "left": 0, "top": 0, "width": 1920, "height": 1080, "primary": True}, ...]"""
     monitors = []
 
     def _callback(hMonitor, hdc, lprcMonitor, dwData):
@@ -82,7 +82,7 @@ def list_monitors():
 
 
 def monitor_region(index=0):
-    """Регион конкретного монитора по индексу."""
+    """根据索引获取指定显示器的区域。"""
     monitors = list_monitors()
     if 0 <= index < len(monitors):
         m = monitors[index]

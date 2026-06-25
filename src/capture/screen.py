@@ -1,6 +1,6 @@
-"""Быстрый захват региона экрана: dxcam (DirectX) с фолбэком на mss. Возвращает BGR numpy-кадр.
+"""快速捕获屏幕区域：dxcam（DirectX），回退到 mss。返回 BGR numpy 帧。
 
-Поддержка double-buffer: захват в фоновом потоке, основной поток читает последний готовый кадр.
+支持双缓冲：在后台线程中捕获，主线程读取最新的就绪帧。
 """
 import logging
 import threading
@@ -30,11 +30,11 @@ class ScreenCapture:
 
                 self._dxcam = dxcam.create(output_color="BGR")
                 if self._dxcam is None:
-                    raise RuntimeError("dxcam.create() вернул None")
+                    raise RuntimeError("dxcam.create() returned None")
                 return
             except Exception as e:
-                _log.warning("dxcam недоступен (%s) — фолбэк на mss.", e)
-                self.backend = "mss"  # тихий фолбэк
+                _log.warning("dxcam unavailable (%s) — fallback to mss.", e)
+                self.backend = "mss"  # 静默回退
 
         self._init_mss()
 
@@ -45,7 +45,7 @@ class ScreenCapture:
         self.backend = "mss"
 
     def start_buffer(self, region, target_fps=30):
-        """Запустить фоновый захват кадров (double-buffer mode)."""
+        """启动后台帧捕获（双缓冲模式）。"""
         if not self._double_buffer:
             return
 
@@ -62,13 +62,13 @@ class ScreenCapture:
         self._buf_thread.start()
 
     def stop_buffer(self):
-        """Остановить фоновый захват."""
+        """停止后台捕获。"""
         self._buf_stop.set()
         if self._buf_thread:
             self._buf_thread.join(timeout=1.0)
 
     def grab(self, region):
-        """region: dict(left, top, width, height). Возвращает BGR-кадр (H, W, 3) или None."""
+        """region: dict(left, top, width, height)。返回 BGR 帧 (H, W, 3) 或 None。"""
         if self._double_buffer:
             with self._buf_lock:
                 if self._buf_frame is not None:
@@ -78,7 +78,7 @@ class ScreenCapture:
         return self._grab_raw(region)
 
     def _grab_raw(self, region):
-        """Одиночный захват кадра (без буфера)."""
+        """单帧捕获（无缓冲）。"""
         if self.backend == "dxcam":
             l, t = region["left"], region["top"]
             r, b = l + region["width"], t + region["height"]

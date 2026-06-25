@@ -1,8 +1,8 @@
-"""Управление мышью: геймерский стиль — прямой быстрый бросок к цели.
+"""鼠标控制：游戏玩家风格 — 直接快速移动到目标。
 
-Курсор летит по прямой линии с постоянной высокой скоростью — так выглядит
-движение геймера с высоким DPI. Промежуточные точки дают видимую траекторию
-(не телепорт), но движение остаётся резким. Финал — точно на цели.
+光标沿直线以恒定的高速飞行 — 就像高 DPI 玩家的移动方式。
+中间点产生可见轨迹（不是瞬移），但移动保持干脆利落。
+最终 — 精确到达目标。
 """
 import math
 import random
@@ -10,8 +10,8 @@ import time
 
 from pynput.mouse import Button, Controller
 
-_SPEED_PPS = 2500   # скорость броска, пикселей/сек (примерно 400 DPI * быстрое движение)
-_MIN_STEPS = 3      # минимум промежуточных кадров (всегда есть видимое движение)
+_SPEED_PPS = 2500   # 移动速度，像素/秒（约 400 DPI * 快速移动）
+_MIN_STEPS = 3      # 最少中间帧数（始终有可见移动）
 
 
 class Mouse:
@@ -44,8 +44,8 @@ class Mouse:
             self._m.position = (tx, ty)
             return
 
-        # Количество шагов: минимум 3, плюс по одному на каждые 60px.
-        # При 2500px/s и шаге каждые 60px — видимое движение ~8ms на шаг.
+        # 步数：最少 3 步，每 60px 增加一步。
+        # 2500px/s 速度下每 60px 一步 — 可见移动约 8ms/步。
         n = max(_MIN_STEPS, int(dist / 60))
         speed = random.uniform(_SPEED_PPS * 0.9, _SPEED_PPS * 1.1)
         duration = dist / speed
@@ -54,7 +54,7 @@ class Mouse:
         for i in range(1, n + 1):
             t = i / n
             if i < n:
-                # промежуточные точки: мелкий поперечный шум (выглядит живо)
+                # 中间点：微小横向噪声（看起来生动）
                 noise = math.sin(t * math.pi) * random.uniform(0, 1.0)
                 if dist > 0:
                     px = -(ty - sy) / dist * noise
@@ -64,6 +64,6 @@ class Mouse:
                 self._m.position = (int(sx + (tx - sx) * t + px),
                                     int(sy + (ty - sy) * t + py))
             else:
-                # финал — точно на цели, без шума
+                # 最终 — 精确到达目标，无噪声
                 self._m.position = (tx, ty)
             time.sleep(step_sleep)
