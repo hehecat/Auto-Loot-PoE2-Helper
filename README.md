@@ -4,86 +4,85 @@
 
 # Auto Loot PoE2 Helper
 
-Помощник авто-подбора лута для **Path of Exile 2**. Работает исключительно по скриншоту экрана — компьютерное зрение, без чтения памяти игры.
+**Path of Exile 2** 自动拾取助手。纯截图识别——基于计算机视觉，不读取游戏内存。
 
-> ⚠️ Сторонняя автоматизация нарушает ToS GGG и может привести к бану аккаунта. Используешь на свой риск.
-
----
-
-## Принцип работы
-
-```
-Лут-фильтр (NeverSink)
-  │
-  ├── filter_patcher.py — впрыскивает override-блок
-  │     красит валюту/фрагменты/гемы/вейстоуны
-  │     в уникальный цвет-маркер RGB(255,0,200) — ярко-розовый
-  │     (такого цвета нет в окружении PoE2 → нет ложных срабатываний)
-  │
-  └── Игра рендерит подписи этим цветом
-        │
-        ▼
-  capture/screen.py — захват кадра окна (dxcam 60fps)
-        │
-        ▼
-  vision/color_detector.py — HSV-маска → поиск пикселей цвета-маркера → контуры → центры
-        │
-        ▼
-  core/loot_engine.py — сортировка целей по приоритету (валюта > фрагменты > гемы > вейстоуны)
-        │                фильтр по радиусу от центра экрана, очередь, анти-дабл-клик
-        ▼
-  input/mouse.py — геймерский бросок: быстро直线 к лейблу, точное приземление + клик
-```
-
-Главный цикл: **захват → детекция → сортировка → клик**. Всё, никакой магии.
+> ⚠️ 第三方自动化违反 GGG 服务条款，可能导致账号封禁。使用风险自负。
 
 ---
 
-## Возможности
+## 工作原理
 
-### Подбор лута
+```
+物品过滤器 (NeverSink / 一乐)
+  │
+  ├── filter_patcher.py — 扫描现有 Show 块
+  │     给通货/碎片/宝石/路标石追加粉色标记 RGB(255,0,200)
+  │     (该颜色在 PoE2 场景中不存在 → 零误触发)
+  │
+  └── 游戏按过滤器渲染物品标签
+        │
+        ▼
+  capture/screen.py — 捕获窗口帧 (dxcam 60fps)
+        │
+        ▼
+  vision/color_detector.py — HSV 遮罩 → 搜索标记颜色像素 → 轮廓 → 中心点
+        │
+        ▼
+  core/loot_engine.py — 按优先级排序目标 (通货 > 碎片 > 宝石 > 路标石)
+        │                按距屏幕中心半径过滤、队列、防双击
+        ▼
+  input/mouse.py — 贝塞尔曲线移动 + 点击 (模拟人手操作)
+```
 
-Только «мелочёвка» — настраивается в `config/default.yaml`:
+主循环：**捕获 → 检测 → 排序 → 点击**。就这么简单。
 
-| Категория | Что подбирает |
-|-----------|---------------|
-| `currency` | Chaos Orb, Divine Orb, Exalted Orb и т.д. |
-| `fragments` | Осколки, фрагменты карт |
-| `gems` | Uncut Skill/Support/Spirit Gem |
-| `waystones` | Вейстоуны для карт |
+---
 
-Уники, редкие вещи и белый мусор — **не подбираются**, берёшь сам.
+## 功能
 
-**Приоритет:** валюта → фрагменты → гемы → вейстоуны. Внутри категории — ближайший к персонажу.
+### 物品拾取
 
-### Режимы подбора
+仅拾取"小件物品"——在 `config/default.yaml` 中配置：
 
-| Режим | Описание |
-|-------|----------|
-| `toggle` | F8 вкл/выкл. Включил — собирает сам. |
-| `hold` | Собирает, пока зажата клавиша `pickup` |
-| `single` | Один клик за нажатие |
-| `lazy` | Навёл мышь на лут — сам подбирает |
+| 分类 | 拾取内容 |
+|------|----------|
+| `currency` | 混沌石、神圣石、崇高石等 |
+| `fragments` | 碎片、地图碎片 |
+| `gems` | 未切割技能/辅助/灵魂宝石 |
+| `waystones` | 地图路标石 |
 
-### Хоткеи
+传说装备、稀有装备和白色垃圾**不会拾取**，自己手动捡。
 
-| Клавиша | Действие |
-|---------|----------|
-| F8 | Мастер вкл/выкл (авто-подбор + автоматика) |
-| F7 | Сменить профиль (циклом) |
-| F12 | Выход |
+**优先级：** 通货 → 碎片 → 宝石 → 路标石。同分类内优先拾取最近的。
 
-### Оверлей
+### 拾取模式
 
-Прозрачное click-through окно поверх игры:
-- Статус: ON / idle, текущий режим и профиль
-- Целей в кадре / в радиусе подбора
-- Счётчик подобраного: `cur:47  frag:12  gem:3`
-- HP% (если включена авто-фласка)
+| 模式 | 说明 |
+|------|------|
+| `toggle` | 按 F8 开关。开启后全自动拾取 |
+| `hold` | 按住拾取键时持续拾取 |
+| `single` | 每按一次拾取一个 |
+| `lazy` | 鼠标指向物品自动拾取 |
 
-### Авто-фласка HP
+### 快捷键
 
-Следит за орбом жизней через цветовую детекцию. Когда HP < порога — нажимает клавишу фласки.
+| 按键 | 功能 |
+|------|------|
+| F8 | 总开关 (自动拾取 + 自动化) |
+| F7 | 循环切换配置 |
+| F12 | 退出 |
+
+### 浮窗
+
+覆盖在游戏上的半透明窗口：
+- 状态：运行中 / 空闲，当前模式和配置
+- 画面内目标数 / 拾取半径内目标数
+- 拾取计数：`cur:47  frag:12  gem:3`
+- HP%（如启用自动药水）
+
+### 自动生命药剂
+
+通过颜色检测监控血量球。HP 低于阈值时自动按药水键。
 
 ```yaml
 hp_flask:
@@ -93,104 +92,107 @@ hp_flask:
   cooldown_ms: 4500
 ```
 
-Самокалибровка: первые 6 секунд запоминает максимум (полный HP), нормирует относительно него.
+自动校准：前 6 秒记录最大值（满血），以此为标准归一化。
 
-### Авто-автоматика (по таймеру)
+### 定时自动化
 
-Секция `automation` в конфиге — фласки/скиллы по интервалу. По умолчанию выключена. Срабатывает только когда мастер F8 включён и окно игры в фокусе.
+配置中的 `automation` 节——按固定间隔自动使用药水/技能。默认关闭。仅在 F8 总开关开启且游戏窗口在前台时生效。
 
-### Профили
+### 配置文件
 
-`config/profiles/<name>.yaml` — переопределяют значения из `default.yaml`:
+`config/profiles/<name>.yaml`——覆盖 `default.yaml` 中的值：
 
-| Профиль | Назначение |
-|---------|-----------|
-| `calibrated` | Оптимальные настройки после калибровки |
-| `mapping` | Увеличенный радиус подбора |
-| `bossing` | Под боссов (свой радиус/приоритет) |
+| 配置 | 用途 |
+|------|------|
+| `calibrated` | 校准后的最佳设置 |
+| `fast` | 高帧率、快速拾取 |
+| `mapping` | 扩大拾取半径 |
+| `bossing` | 打 BOSS 专用（仅通货、小范围） |
 
-Смена на лету — F7. Старт с профилем: `--profile calibrated`.
+按 F7 随时切换。指定配置启动：`--profile calibrated`。
 
-### Патч фильтра
+### 过滤器补丁
 
 ```powershell
-python -m src.core.filter_patcher --check     # статус
-python -m src.core.filter_patcher --patch     # впрыснуть override (бэкап → *.filter.bak)
-python -m src.core.filter_patcher --unpatch   # откатить
+python -m src.core.filter_patcher --check     # 检查状态
+python -m src.core.filter_patcher --patch     # 追加粉色标记（自动备份 → *.filter.bak）
+python -m src.core.filter_patcher --unpatch   # 回滚
+python -m src.core.filter_patcher --scan-colors  # 扫描过滤器原生颜色
 ```
 
-После патча: Escape → Options → UI → перевыбрать фильтр в игре.
+补丁后：Escape → 选项 → UI → 在游戏中重新选择过滤器。
 
-### Калибровка цвета
+### 颜色校准
 
 ```powershell
 python -m src.calibrate
 python -m src.calibrate --target myprofile
 ```
 
-- ЛКМ — взять цвет с экрана
-- Shift+ЛКМ — указать центр персонажа
-- Трекбары — допуск тона/насыщенности/яркости/площади/радиуса
-- `s` — сохранить профиль
-- `d` — сохранить debug-снимок в `_debug/`
-- `q` — выход
+- 左键 — 从屏幕取色
+- Shift+左键 — 设置角色中心
+- 滑块 — 色容差/饱和度/亮度/面积/半径
+- `s` — 保存配置
+- `d` — 保存调试截图到 `_debug/`
+- `q` — 退出
 
 ---
 
-## Установка
+## 安装
 
-### Зависимости
+### 依赖
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-**Состав:**
-- `dxcam` — быстрый захват экрана (DirectX)
-- `opencv-python` + `numpy` — компьютерное зрение
-- `pynput` — мышь/клавиатура + глобальные хоткеи
-- `pywin32` — поиск окна PoE2, фокус
-- `PyYAML` — конфиги
-- `PyQt5` — прозрачный оверлей
-- `vgamepad` — виртуальный Xbox контроллер (для геймпада)
+**包含：**
+- `dxcam` — 高速屏幕捕获 (DirectX)
+- `opencv-python` + `numpy` — 计算机视觉
+- `pynput` — 鼠标/键盘 + 全局快捷键
+- `pywin32` — 查找 PoE2 窗口、焦点检测
+- `PyYAML` — 配置文件
+- `PyQt5` — GUI 界面
+- `vgamepad` — 虚拟 Xbox 手柄 (手柄模式)
 
-### Геймпад (DualSense → Xbox)
+### 手柄 (DualSense → Xbox)
 
-Для работы с геймпадом установите **DS4Windows**:
+使用手柄需安装 **DS4Windows**：
 
-1. Скачайте с https://github.com/ds4windowsapp/DS4Windows/releases
-2. Установите ViGEmBus driver (включён в установщик)
-3. Подключите DualSense по USB или Bluetooth
-4. Настройте маппинг кнопок в DS4Windows (Profiles → Edit)
+1. 从 https://github.com/ds4windowsapp/DS4Windows/releases 下载
+2. 安装 ViGEmBus 驱动（安装包自带）
+3. 通过 USB 或蓝牙连接 DualSense
+4. 在 DS4Windows 中配置按键映射 (Profiles → Edit)
 
-**Маппинг по умолчанию в PoE2:**
+**PoE2 默认映射：**
 
-| DualSense | Xbox | PoE2 действие |
-|-----------|------|---------------|
-| Cross (X) | A | Подбор предметов |
-| Square | X | Атака |
-| Triangle | Y | Skill 2 |
-| Circle | B | Уклонение (Dodge Roll) |
-| L1 | LB | Flask (Mana) |
-| L2 | LT | Flask (Life) |
-| R3 | Right Stick Click | Switch Weapon Set |
-| D-pad Up | D-pad Up | Highlight Loot |
-| D-pad Down | D-pad Down | Карта |
-| D-pad Left | D-pad Left | Инвентарь |
-| D-pad Right | D-pad Right | Портал |
+| DualSense | Xbox | PoE2 功能 |
+|-----------|------|-----------|
+| Cross (X) | A | 拾取物品 |
+| Square | X | 攻击 |
+| Triangle | Y | 技能 2 |
+| Circle | B | 闪避 |
+| L1 | LB | 药剂 (魔力) |
+| L2 | LT | 药剂 (生命) |
+| R3 | Right Stick Click | 切换武器组 |
+| D-pad Up | D-pad Up | 高亮物品 |
+| D-pad Down | D-pad Down | 地图 |
+| D-pad Left | D-pad Left | 背包 |
+| D-pad Right | D-pad Right | 传送门 |
 
-### Запуск
+### 启动
 
 ```powershell
-python -m src.main                          # стандартный запуск
-python -m src.main --profile mapping        # с профилем
-python -m src.main --no-overlay             # без оверлея
-python -m src.main --calibrate              # окно калибровки с подсветкой целей
+python -m src.main                          # 标准启动
+python -m src.main --profile mapping        # 指定配置
+python -m src.main --no-overlay             # 无浮窗
+python -m src.main --gui                    # GUI 界面
+python -m src.main --calibrate              # 校准窗口（显示目标高亮）
 ```
 
-Или двойной клик по `run_calibrated.bat`.
+也可以直接双击 `run_gui.bat`。
 
-### Тесты
+### 测试
 
 ```powershell
 python -m pytest
@@ -198,79 +200,83 @@ python -m pytest
 
 ---
 
-## Структура проекта
+## 项目结构
 
 ```
 Auto Loot PoE2 Helper/
 ├── config/
-│   ├── default.yaml           # базовый конфиг
-│   ├── gamepad/               # маппинг геймпада
-│   └── profiles/              # профили (calibrated, mapping, bossing)
+│   ├── default.yaml           # 基础配置
+│   ├── gamepad/               # 手柄映射
+│   └── profiles/              # 配置文件 (calibrated, mapping, bossing 等)
 ├── src/
-│   ├── main.py                # точка входа, главный цикл
-│   ├── calibrate.py           # мастер калибровки цвета
-│   ├── config_manager.py      # загрузка/мердж конфигов
-│   ├── logger.py              # логирование
+│   ├── main.py                # 入口、主循环
+│   ├── calibrate.py           # 颜色校准向导
+│   ├── config_manager.py      # 配置加载/合并
+│   ├── logger.py              # 日志
 │   ├── capture/
-│   │   ├── window.py          # поиск окна PoE2, геометрия, фокус
-│   │   └── screen.py          # захват кадра (dxcam → mss fallback)
+│   │   ├── window.py          # 查找 PoE2 窗口、几何、焦点
+│   │   └── screen.py          # 画面捕获 (dxcam → mss 回退)
 │   ├── vision/
-│   │   ├── color_detector.py  # HSV-маска → детекция цвета-маркера
-│   │   └── hp_detector.py     # детекция HP по цвету орба
+│   │   ├── color_detector.py  # HSV 遮罩 → 标记颜色检测
+│   │   └── hp_detector.py     # 血量球颜色检测
 │   ├── input/
-│   │   ├── mouse.py           # геймерское движение + клик с рандомизацией
-│   │   ├── keyboard.py        # глобальные хоткеи
-│   │   ├── gamepad.py         # виртуальный Xbox контроллер (vgamepad)
-│   │   └── dualsense_bridge.py # мост DualSense → Virtual Xbox
+│   │   ├── mouse.py           # 贝塞尔曲线移动 + 随机延迟点击
+│   │   ├── keyboard.py        # 全局快捷键
+│   │   ├── gamepad.py         # 虚拟 Xbox 手柄 (vgamepad)
+│   │   └── dualsense_bridge.py # DualSense → 虚拟 Xbox 桥接
 │   ├── core/
-│   │   ├── loot_engine.py     # очередь целей, приоритеты, анти-дабл-клик
-│   │   ├── filter_patcher.py  # впрыск override-блока в .filter
-│   │   ├── hp_watcher.py      # мониторинг HP и авто-фласка
-│   │   ├── automation.py      # авто-действия по таймеру
-│   │   └── profiles.py        # загрузка/переключение профилей
+│   │   ├── loot_engine.py     # 目标队列、优先级、防双击
+│   │   ├── filter_patcher.py  # 过滤器补丁注入
+│   │   ├── hp_watcher.py      # HP 监控 + 自动药水
+│   │   ├── automation.py      # 定时技能/药水自动化
+│   │   └── profiles.py        # 配置加载/切换
 │   └── ui/
-│       └── overlay.py          # прозрачный оверлей поверх игры
-├── tests/                     # pytest-тесты
-├── tools/                     # дебаг-скрипты (анализ кадров, HP)
-├── PLAN.md                    # план реализации
+│       └── overlay.py         # 游戏上方透明浮窗
+├── tests/                     # pytest 测试
+├── tools/                     # 调试脚本 (画面分析、HP)
+├── PLAN.md                    # 实现计划
 └── requirements.txt
 ```
 
 ---
 
-## Конфигурация
+## 配置说明
 
-Весь конфиг — `config/default.yaml`. Основные секции:
+全部配置在 `config/default.yaml`。主要节点：
 
 ```yaml
 filter:
-  path: "C:/Users/OLD/Documents/My Games/Path of Exile 2/Vladislav Yoshi Perfection.filter"
+  path: "C:/Users/OLD/Documents/My Games/Path of Exile 2/YourFilter.filter"
   marker_rgb: [255, 0, 200]
   categories: [currency, fragments, gems, waystones]
 
 vision:
-  marker_hsv_low: [149, 200, 200]
-  marker_hsv_high: [151, 255, 255]
-  min_blob_area: 12
+  hue_tolerance: 8
+  sat_min: 120
+  val_min: 120
+  min_blob_area: 120
 
 loot:
-  pickup_radius_px: 400
-  click_cooldown_ms: 90
-  randomize_delay_ms: [20, 70]
+  pickup_radius_px: 250
+  click_cooldown_ms: 100
+  randomize_delay_ms: [5, 15]
   mode: toggle
-  category_priority: [currency, fragments, gems, waystones]
+  category_priority:
+    currency: 1
+    fragments: 2
+    gems: 3
+    waystones: 4
 
 hotkeys:
   toggle: "f8"
   pickup: "space"
-  calibrate: "f9"
   quit: "f12"
 ```
 
-Профили переопределяют только нужные поля — остальное берётся из `default.yaml`.
+配置文件只覆盖需要修改的字段——其余继承自 `default.yaml`。
 
 ---
 
-## Лицензия
+## 许可证
 
 MIT
